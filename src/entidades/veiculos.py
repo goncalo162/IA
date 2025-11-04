@@ -11,14 +11,16 @@ class EstadoVeiculo(Enum):
 
 class Veiculo(ABC):
     def __init__(self, id_veiculo: str, autonomia_maxima: int, autonomia_atual: int,
-                 capacidade_passageiros: int, custo_operacional_km: float,
+                 capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
                  estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL):
-        self.id_veiculo = id_veiculo
-        self.autonomia_maxima = autonomia_maxima
-        self.autonomia_atual = autonomia_atual
-        self.capacidade_passageiros = capacidade_passageiros
-        self.custo_operacional_km = custo_operacional_km
-        self.estado = estado
+        # atributos protegidos (encapsulados) — aceder via propriedades
+        self._id_veiculo = id_veiculo
+        self._autonomia_maxima = autonomia_maxima
+        self._autonomia_atual = autonomia_atual
+        self._capacidade_passageiros = capacidade_passageiros
+        self._numero_passageiros = numero_passageiros
+        self._custo_operacional_km = custo_operacional_km
+        self._estado = estado
 
     @abstractmethod
     def reabastecer(self):
@@ -28,6 +30,13 @@ class Veiculo(ABC):
     @abstractmethod
     def tempoReabastecimento(self):
         return
+
+    def adicionar_passageiros(self, numero: int):
+        """Adiciona passageiros ao veículo, se houver capacidade."""
+        if self._numero_passageiros + numero <= self._capacidade_passageiros:
+            self._numero_passageiros += numero
+            return True
+        return False
 
     def reabastecer(self):
         self.autonomia_atual = self.autonomia_maxima
@@ -43,6 +52,41 @@ class Veiculo(ABC):
                 f"Capacidade: {self.capacidade_passageiros} passageiros | "
                 f"Custo/km: €{self.custo_operacional_km:.2f} | "
                 f"Estado: {self.estado.value}")
+
+    # -------------------- Propriedades (getters/setters) --------------------
+    @property
+    def id_veiculo(self) -> str:
+        return self._id_veiculo
+
+    @property
+    def autonomia_maxima(self) -> int:
+        return self._autonomia_maxima
+
+    @property
+    def autonomia_atual(self) -> int:
+        return self._autonomia_atual
+
+    @property
+    def capacidade_passageiros(self) -> int:
+        return self._capacidade_passageiros
+
+    @property
+    def custo_operacional_km(self) -> float:
+        return self._custo_operacional_km
+
+    @property
+    def estado(self) -> EstadoVeiculo:
+        return self._estado
+
+    @estado.setter
+    def estado(self, value: EstadoVeiculo):
+        if not isinstance(value, EstadoVeiculo):
+            raise ValueError("estado deve ser um EstadoVeiculo")
+        self._estado = value
+
+    @property
+    def numero_passageiros(self) -> int:
+        return self._numero_passageiros
 
 # -------------------- Veículo a Combustão ---------------- #
 
@@ -65,12 +109,16 @@ class VeiculoEletrico(Veiculo):
                          custo_operacional_km)
         self.tempo_recarga_km = tempo_recarga_km  # tempo médio para carga de um km
 
+
     def tempoReabastecimento(self):
         tempo = self.tempo_recarga_km * (self.autonomia_maxima - self.autonomia_atual)
         return tempo
 
 
-
+# -------------------- Propriedades (getters/setters) --------------------
+@property
+def tempo_recarga_km(self) -> int:
+    return self._tempo_recarga_km
 
 
 
