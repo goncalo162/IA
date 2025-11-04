@@ -1,4 +1,4 @@
-# models/request.py
+# models/pedido.py
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
@@ -9,17 +9,17 @@ class EstadoPedido(Enum):
     EM_CURSO = 2
     CONCLUIDO = 3
 
-class Request:
+class Pedido:
     """
     Representa um pedido de transporte feito por um cliente da TaxiGreen.
     """
 
-    def __init__(self, request_id: int, origem: int, destino: int, passageiros: int,
+    def __init__(self, pedido_id: int, origem: int, destino: int, passageiros: int,
                  horario_pretendido: datetime, prioridade: int = 1,
                  preferencia_ambiental: int = 0):
 
         # atributos protegidos — aceder via propriedades
-        self._id = request_id
+        self._id = pedido_id
         self._origem = origem
         self._destino = destino
         self._passageiros = passageiros

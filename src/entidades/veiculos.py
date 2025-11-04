@@ -10,7 +10,7 @@ class EstadoVeiculo(Enum):
     EM_MANUTENCAO = 5
 
 class Veiculo(ABC):
-    def __init__(self, id_veiculo: str, autonomia_maxima: int, autonomia_atual: int,
+    def __init__(self, id_veiculo: int, autonomia_maxima: int, autonomia_atual: int,
                  capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
                  estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL):
         # atributos protegidos (encapsulados) — aceder via propriedades
@@ -55,7 +55,7 @@ class Veiculo(ABC):
 
     # -------------------- Propriedades (getters/setters) --------------------
     @property
-    def id_veiculo(self) -> str:
+    def id_veiculo(self) -> int:
         return self._id_veiculo
 
     @property
