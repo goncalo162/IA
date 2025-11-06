@@ -1,3 +1,4 @@
+from collections import deque
 from graph.grafo import Grafo
 
 #############
@@ -30,14 +31,20 @@ def dfs(grafo: Grafo, origem: str, destino: str):
 def bfs(grafo: Grafo, origem: str, destino: str):
     if origem == destino:
         return [origem]
+
+    fila = deque([[origem]])
+    visitados = set([origem])
     
-    caminhos = [[origem]]
-    for caminho in caminhos:
-        for (vizinho, _) in grafo.getNeighbours(origem):
-            if vizinho == destino:
-                return  caminho + [destino]
-            if vizinho not in caminho:
-                caminhos.append(caminho + [vizinho])
-        caminhos.remove(caminho) 
+    while fila:
+        caminho = fila.popleft()
+        no_atual = caminho[-1]
         
+        for vizinho, _ in grafo.getNeighbours(no_atual):
+            if vizinho not in visitados:
+                novo_caminho = caminho + [vizinho]
+                if vizinho == destino:
+                    return novo_caminho
+                fila.append(novo_caminho)
+                visitados.add(vizinho)
+    
     return None
