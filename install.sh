@@ -69,7 +69,6 @@ echo -e "${YELLOW}Para correr o programa no futuro é necessário ativar o ambie
 echo "   source venv/bin/activate"
 echo
 echo -e "${YELLOW}Para correr o programa:${RESET}"
-echo "  Num terminal: python3 graph_display.py dataset/grafo.json"
-echo "  Noutro terminal: python3 tui_display.py dataset/grafo.json"
+echo "  Num terminal: python3 src/display/display.py dataset/grafo.json <algoritmo de procura>"
 echo
 echo -e "${GREEN}Instalação concluída.${RESET}"

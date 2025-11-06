@@ -17,7 +17,7 @@ import os
 from graph.grafo import Grafo
 from graph.node import Node
 from graph.aresta import Aresta
-from graph.algoritmos_procura import dfs
+from graph.algoritmos_procura import dfs, bfs
 
 
 HOST = "127.0.0.1"
@@ -132,7 +132,7 @@ class AnimatedGraphApp:
 
         origem = self.car_info["position"]
 
-        path_nodes = dfs(self.grafo, origem, destino)
+        path_nodes = bfs(self.grafo, origem, destino)
         if not path_nodes:
             self.send_update(f"status No path to {destino}")
             return
