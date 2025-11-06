@@ -17,6 +17,7 @@ import os
 from graph.grafo import Grafo
 from graph.node import Node
 from graph.aresta import Aresta
+from graph.algoritmos_procura import dfs
 
 
 HOST = "127.0.0.1"
@@ -124,38 +125,28 @@ class AnimatedGraphApp:
         self.ax.set_title(f"Carro em: {self.car_info['position']}")
         self.canvas.draw()
 
-    def bfs(self, start, end):
-        if start == end:
-            return [start]
-        visited = set()
-        q = [[start]]
-        while q:
-            path = q.pop(0)
-            node = path[-1]
-            if node == end:
-                return path
-            if node not in visited:
-                visited.add(node)
-                for n in self.G.neighbors(node):
-                    q.append(path + [n])
-        return None
-
-    def start_movement(self, target):
+    def start_movement(self, destino):
         if self.car_info["is_moving"]:
             self.send_update("status Already moving")
             return
-        path = self.bfs(self.car_info["position"], target)
-        if not path:
-            self.send_update(f"status No path to {target}")
+
+        origem = self.car_info["position"]
+
+        path_nodes = dfs(self.grafo, origem, destino)
+        if not path_nodes:
+            self.send_update(f"status No path to {destino}")
             return
+
+        path_names = path_nodes
+
         self.car_info.update({
-            "target": target,
-            "path": path,
+            "target": destino,
+            "path": path_names,
             "path_index": 0,
             "progress": 0.0,
             "is_moving": True,
         })
-        self.send_update(f"status Moving to {target} via {'→'.join(path)}")
+        self.send_update(f"status Moving to {destino} via {'→'.join(path_names)}")
 
     def update_animation(self, frame):
         car = self.car_info
