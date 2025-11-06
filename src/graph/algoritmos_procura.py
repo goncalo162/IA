@@ -28,6 +28,16 @@ def dfs(grafo: Grafo, origem: str, destino: str):
 #############
 
 def bfs(grafo: Grafo, origem: str, destino: str):
-    caminhos = [[origem]]
+    if origem == destino:
+        return [origem]
     
-    return dfsAux(grafo, origem, destino, [])
+    caminhos = [[origem]]
+    for caminho in caminhos:
+        for (vizinho, _) in grafo.getNeighbours(origem):
+            if vizinho == destino:
+                return  caminho + [destino]
+            if vizinho not in caminho:
+                caminhos.append(caminho + [vizinho])
+        caminhos.remove(caminho) 
+        
+    return None
