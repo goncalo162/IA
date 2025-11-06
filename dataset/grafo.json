@@ -1,0 +1,16 @@
+{
+    "directed": false,
+    "nodes": [
+      {"id": 0, "name": "Monte", "tipo": "LOCAL"},
+      {"id": 1, "name": "Descampado", "tipo": "BOMBA_GASOLINA"},
+      {"id": 2, "name": "Prometeu", "tipo": "LOCAL"},
+      {"id": 3, "name": "Rampa", "tipo": "POSTO_CARREGAMENTO"}
+    ],
+    "edges": [
+      {"source": "Monte", "target": "Descampado", "quilometro": 10, "velocidadeMaxima": 100, "nome": "A-B", "transito": "NORMAL"},
+      {"source": "Descampado", "target": "Prometeu", "quilometro": 20, "velocidadeMaxima": 80, "nome": "B-C", "transito": "ELEVADO"},
+      {"source": "Descampado", "target": "Rampa", "quilometro": 15, "velocidadeMaxima": 90, "nome": "C-D", "transito": "VAZIO"},
+      {"source": "Prometeu", "target": "Rampa", "quilometro": 25, "velocidadeMaxima": 110, "nome": "A-D", "transito": "MUITO_ELEVADO"}
+    ]
+  }
+  

@@ -1,4 +1,9 @@
-# graph_display.py
+import sys
+import os
+
+# Add project root to Python path (so grafos can be imported)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import socket
 import threading
 import tkinter as tk
@@ -6,15 +11,20 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.animation import FuncAnimation
-import math
 import sys
+import os
+
+from graph.grafo import Grafo
+from graph.node import Node
+from graph.aresta import Aresta
+
 
 HOST = "127.0.0.1"
 PORT = 6000
 
 
 class AnimatedGraphApp:
-    def __init__(self, master):
+    def __init__(self, master, grafo):
         self.master = master
         self.master.title("Graph Animation - Remote Controlled")
 
@@ -23,14 +33,23 @@ class AnimatedGraphApp:
         self.canvas = FigureCanvasTkAgg(self.fig, master=master)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # --- Graph setup ---
+        # --- Load Grafo object ---
+        self.grafo = grafo
+
+        # --- Build NetworkX graph from Grafo ---
         self.G = nx.Graph()
-        self.G.add_edges_from([("A", "B"), ("B", "C"), ("C", "D"), ("A", "D")])
+        for node in self.grafo.getNodes():
+            self.G.add_node(node.getName())
+
+        for origem in self.grafo.m_graph.keys():
+            for (destino, aresta) in self.grafo.m_graph[origem]:
+                self.G.add_edge(origem, destino, aresta=aresta)
+
         self.pos = nx.spring_layout(self.G, seed=42)
 
         # --- Car info ---
         self.car_info = {
-            "position": "A",
+            "position": self.grafo.getNodes()[0].getName(),  # start at first node
             "target": None,
             "path": [],
             "path_index": 0,
@@ -85,8 +104,21 @@ class AnimatedGraphApp:
     # --- Graph + Animation ---
     def draw_graph(self):
         self.ax.clear()
+
+        # Build edge labels using Aresta info
+        edge_labels = {}
+        for u, v, data in self.G.edges(data=True):
+            aresta = data["aresta"]
+            label = f"{aresta.getNome()}\n{aresta.getTempoPercorrer():.2f} min"
+            edge_labels[(u, v)] = label
+
+        # Draw nodes and edges
         nx.draw_networkx(self.G, self.pos, ax=self.ax, with_labels=True,
-                         node_color="lightblue", node_size=800)
+                         node_color="lightblue", node_size=800, font_weight="bold")
+
+        nx.draw_networkx_edge_labels(self.G, self.pos, edge_labels=edge_labels, font_size=8)
+
+        # Draw the car
         x, y = self.pos[self.car_info["position"]]
         self.car, = self.ax.plot(x, y, "ro", markersize=20)
         self.ax.set_title(f"Carro em: {self.car_info['position']}")
@@ -157,12 +189,25 @@ class AnimatedGraphApp:
 
         # Update car plot
         self.car.set_data([x], [y])
+        self.ax.set_title(f"Carro em: {car['position']}")
         self.canvas.draw_idle()
 
 
 if __name__ == "__main__":
+    # Parse argument for JSON file path
+    graph_path = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if graph_path and os.path.exists(graph_path):
+        try:
+            grafo = Grafo.from_json_file(graph_path)
+            print(f"✅ Loaded graph from JSON: {graph_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to load JSON ({e}), using default example.")
+    else:
+        print("ℹ️ No valid JSON path provided, using default example.")
+
     root = tk.Tk()
-    app = AnimatedGraphApp(root)
+    app = AnimatedGraphApp(root, grafo)
     try:
         root.mainloop()
     except KeyboardInterrupt:
