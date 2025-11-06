@@ -5,14 +5,11 @@ class TipoNodo(Enum):
     BOMBA_GASOLINA = 1
     POSTO_CARREGAMENTO = 2
 
-# Classe nodo para definiçao dos nodos
-# cada nodo tem um nome e um id, poderia ter também um apontador para outro elemento a guardar....
 class Node:
-    def __init__(self, name, id=-1, tipo:TipoNodo = TipoNodo.LOCAL):     #  construtor do nodo....."
+    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL):
         self.m_id = id
         self.m_name = str(name)
         self.m_tipo = tipo
-        # posteriormente podera ser colocodo um objeto que armazena informação em cada nodo.....
 
     def __str__(self):
         return "node " + self.m_name
@@ -33,7 +30,9 @@ class Node:
         return self.m_tipo
 
     def __eq__(self, other):
-        return self.m_name == other.m_name and self.m_tipo == other.m_tipo # ver se é preciso tb testar o id....
+        if not isinstance(other, Node):
+            return False
+        return self.m_name == other.m_name and self.m_tipo == other.m_tipo
 
     def __hash__(self):
-        return hash(self.m_name)
+        return hash((self.m_name, self.m_tipo))

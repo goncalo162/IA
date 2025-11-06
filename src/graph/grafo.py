@@ -86,6 +86,16 @@ class Grafo:
             custo += self.get_arc_cost(caminho[i], caminho[i + 1])
         return custo
 
+    ####################
+    # função  getneighbours, devolve vizinhos de um nó
+    ##############################
+
+    def getNeighbours(self, nodo):
+        lista = []
+        for (adjacente, peso) in self.m_graph[nodo]:
+            lista.append((adjacente, peso))
+        return lista
+
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
     ##############################################
