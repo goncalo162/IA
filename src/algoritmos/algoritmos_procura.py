@@ -1,5 +1,5 @@
 from collections import deque
-from graph.grafo import Grafo
+from infra.grafo import Grafo
 
 #############
 #   *dfs*   

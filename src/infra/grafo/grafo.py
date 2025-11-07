@@ -1,7 +1,7 @@
 import json
 import math
-from graph.node import Node, TipoNodo
-from graph.aresta import Aresta, NivelTransito
+from grafo.node import Node, TipoNodo
+from grafo.aresta import Aresta, NivelTransito
 
 
 class Grafo:
