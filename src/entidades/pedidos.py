@@ -1,7 +1,6 @@
-# models/pedido.py
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional
 
 
 class EstadoPedido(Enum):
@@ -9,16 +8,16 @@ class EstadoPedido(Enum):
     EM_CURSO = 2
     CONCLUIDO = 3
 
+
 class Pedido:
     """
-    Representa um pedido de transporte feito por um cliente da TaxiGreen.
+    Representa um pedido de transporte.
     """
 
     def __init__(self, pedido_id: int, origem: int, destino: int, passageiros: int,
                  horario_pretendido: datetime, prioridade: int = 1,
                  preferencia_ambiental: int = 0):
 
-        # atributos protegidos — aceder via propriedades
         self._id = pedido_id
         self._origem = origem
         self._destino = destino
@@ -27,17 +26,15 @@ class Pedido:
         self._prioridade = prioridade
         self._preferencia_ambiental = preferencia_ambiental
         self._estado: EstadoPedido = EstadoPedido.PENDENTE
-
-
+        self._atribuir_a: Optional[int] = None
 
     def __str__(self) -> str:
-        # representação mais amigável para impressão ao utilizador
         return (f"Pedido #{self.id}: {self.origem} → {self.destino} | "
                 f"{self.passageiros} pax | prioridade {self.prioridade} | "
                 f"estado: {self.estado.name}")
 
     def __eq__(self, other):
-        return isinstance(other, Request) and self.id == other.id
+        return isinstance(other, Pedido) and self.id == other.id
 
     # -------------------- Propriedades (getters/setters) --------------------
     @property
@@ -45,11 +42,11 @@ class Pedido:
         return self._id
 
     @property
-    def origem(self) -> str:
+    def origem(self) -> int:
         return self._origem
 
     @property
-    def destino(self) -> str:
+    def destino(self) -> int:
         return self._destino
 
     @property
@@ -71,6 +68,10 @@ class Pedido:
     @property
     def atribuir_a(self) -> Optional[int]:
         return self._atribuir_a
+
+    @atribuir_a.setter
+    def atribuir_a(self, value: Optional[int]):
+        self._atribuir_a = value
 
     @property
     def estado(self) -> EstadoPedido:
