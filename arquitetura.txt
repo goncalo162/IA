@@ -1,0 +1,26 @@
+## Estrutura da arquitetura das pastasx
+
+/ 
+├─ arquitetura.txt
+├─ install.sh
+├─ README.md
+├─ dataset/
+│  └─ grafo.json
+└─ src/
+	├─ main.py
+	├─ algoritmos/
+	│  └─ algoritmos_procura.py
+	├─ display/
+	│  └─ display.py
+	└─ infra/
+		├─ gestaoFrota.py
+		├─ entidades/
+		│  ├─ pedidos.py
+		│  └─ veiculos.py
+		└─ grafo/
+			├─ aresta.py
+			├─ grafo.py
+			└─ node.py
+
+
+
