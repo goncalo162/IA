@@ -14,9 +14,8 @@ class GestaoFrota:
     """Gestor simples de frota e pedidos."""
 
     def __init__(self):
-        # Mapas públicos simples
-        self.veiculos: Dict[int, Veiculo] = {}
-        self.pedidos: Dict[int, Pedido] = {}
+        self._veiculos: Dict[int, Veiculo] = {}
+        self._pedidos: Dict[int, Pedido] = {}
 
     # -------------------- Veículos --------------------
     def adicionar_veiculo(self, vehicle: Veiculo):
@@ -29,7 +28,7 @@ class GestaoFrota:
         return self.veiculos.get(vehicle_id)
 
     def lista_veiculos(self):
-        return list(self.veiculos.values())
+        return list(self._veiculos.values())
 
     # -------------------- Pedidos --------------------
     def adicionar_pedido(self, pedido: Pedido):
