@@ -12,10 +12,10 @@ if src_dir not in sys.path:
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from graph.grafo import Grafo
-from infraestrutura.gestaoFrota import GestaoFrota
-from entidades.pedidos import Pedido
-from entidades.veiculos import VeiculoCombustao, VeiculoEletrico
+from infra.grafo import Grafo
+from infra.gestaoFrota import GestaoFrota
+from infra.entidades.pedidos import Pedido
+from infra.entidades.veiculos import VeiculoCombustao, VeiculoEletrico
 from display.display import run_combined
 
 

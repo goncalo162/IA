@@ -18,8 +18,8 @@ from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Input, Button, Static
 
 # --- Import your project modules ---
-from graph.grafo import Grafo
-from graph.algoritmos_procura import bfs, dfs
+from infra.grafo import Grafo
+from algoritmos.algoritmos_procura import bfs, dfs
 
 # --- Shared command queue for communication between Textual and Tkinter ---
 command_queue = queue.Queue()
