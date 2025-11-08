@@ -25,3 +25,4 @@ class AlocadorSimples(AlocadorBase):
             if self._verificar_capacidade(v, pedido):
                 return v
         return None
+

@@ -165,6 +165,7 @@ class Simulador:
             self.gestor_eventos.atualizar(self.tempo_simulacao)
             
             # 4. Atualizar display animado (se disponível)
+            #TODO: mudar o nome/adaptar para display
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas) #NOTA: adaptar display a isto
             
