@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Optional
+
+from infra.entidades.viagem import Viagem
 
 #NOTA: enum sus, depois vejam os estados melhor
 class EstadoVeiculo(Enum):
@@ -23,17 +26,8 @@ class Veiculo(ABC):
         self._estado = estado
         self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
         
-        #TODO: rever isto e ver se fazemos uma classe viagem
-        # Informações da viagem em andamento
-        self.viagem_ativa = False
-        self.pedido_id = None
-        self.rota = []
-        self.distancia_total = 0.0
-        self.distancia_percorrida = 0.0
-        self.tempo_inicio = None
-        self.segmentos = []
-        self.indice_segmento_atual = 0
-        self.distancia_no_segmento = 0.0
+        # Estado de viagem agora é encapsulado na classe Viagem
+        self.viagem: Optional[Viagem] = None
 
     @abstractmethod
     def reabastecer(self):
@@ -116,116 +110,43 @@ class Veiculo(ABC):
         self._localizacao_atual = value
     
     def iniciar_viagem(self, pedido_id: int, rota: list, distancia_total: float, tempo_inicio, grafo, velocidade_media: float = 50.0):
-        """Inicia uma viagem no veículo."""
-        from datetime import datetime
-        
-        self.viagem_ativa = True
-        self.pedido_id = pedido_id
-        self.rota = rota
-        self.distancia_total = distancia_total
-        self.distancia_percorrida = 0.0
-        self.tempo_inicio = tempo_inicio
-        self.indice_segmento_atual = 0
-        self.distancia_no_segmento = 0.0
-        
-        # Pré-calcular informações dos segmentos
-        self.segmentos = []
-        for i in range(len(rota) - 1):
-            origem = rota[i]
-            destino = rota[i + 1]
-            aresta = grafo.getEdge(origem, destino)
-            
-            if aresta:
-                distancia = aresta.getQuilometro()
-                velocidade = aresta.getVelocidadeMaxima()
-                transito = aresta.getTransito()
-                
-                # Calcular tempo baseado na velocidade da aresta e trânsito
-                tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
-                fator_transito = transito.value if transito.value is not None else 1.0
-                tempo_horas = tempo_base_horas * fator_transito
-                
-                self.segmentos.append({
-                    'origem': origem,
-                    'destino': destino,
-                    'distancia': distancia,
-                    'velocidade': velocidade,
-                    'tempo_horas': tempo_horas
-                })
-            else:
-                # Fallback se não houver aresta
-                distancia_fallback = 10.0
-                self.segmentos.append({
-                    'origem': origem,
-                    'destino': destino,
-                    'distancia': distancia_fallback,
-                    'velocidade': velocidade_media,
-                    'tempo_horas': distancia_fallback / velocidade_media
-                })
+        """Inicia uma viagem no veículo criando um objeto Viagem."""
+        self.viagem = Viagem(pedido_id=pedido_id, rota=rota, distancia_total=distancia_total,
+                             tempo_inicio=tempo_inicio, grafo=grafo, velocidade_media=velocidade_media)
     
     def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
-        """
-        Atualiza o progresso da viagem baseado no tempo decorrido.
-        Retorna True se a viagem foi concluída.
-        """
-        if not self.viagem_ativa or not self.segmentos:
+        """Delegates progress update to Viagem. Retorna True se concluída."""
+        if not self.viagem:
             return False
-        
-        tempo_restante = tempo_decorrido_horas
-        
-        while tempo_restante > 0 and self.indice_segmento_atual < len(self.segmentos):
-            segmento = self.segmentos[self.indice_segmento_atual]
-            distancia_segmento = segmento['distancia']
-            tempo_segmento = segmento['tempo_horas']
-            
-            # Calcular quanto falta percorrer neste segmento
-            distancia_restante_segmento = distancia_segmento - self.distancia_no_segmento
-            tempo_para_concluir_segmento = (distancia_restante_segmento / distancia_segmento) * tempo_segmento
-            
-            if tempo_restante >= tempo_para_concluir_segmento:
-                # Concluir este segmento e avançar para o próximo
-                self.distancia_percorrida += distancia_restante_segmento
-                self.distancia_no_segmento = 0.0
-                self.indice_segmento_atual += 1
-                tempo_restante -= tempo_para_concluir_segmento
-            else:
-                # Avançar parcialmente neste segmento
-                velocidade_efetiva = distancia_segmento / tempo_segmento if tempo_segmento > 0 else 0
-                distancia_avancada = velocidade_efetiva * tempo_restante
-                self.distancia_no_segmento += distancia_avancada
-                self.distancia_percorrida += distancia_avancada
-                tempo_restante = 0
-        
-        # Verificar se a viagem foi concluída
-        if self.indice_segmento_atual >= len(self.segmentos):
-            self.viagem_ativa = False
+        concluiu = self.viagem.atualizar_progresso(tempo_decorrido_horas)
+        if concluiu:
+            # viagem concluída — o simulador tratará atualização do local
             return True
-        
         return False
     
     def concluir_viagem(self):
-        """Finaliza a viagem."""
-        self.viagem_ativa = False
-        self.pedido_id = None
-        self.rota = []
-        self.distancia_total = 0.0
-        self.distancia_percorrida = 0.0
-        self.tempo_inicio = None
-        self.segmentos = []
-        self.indice_segmento_atual = 0
-        self.distancia_no_segmento = 0.0
+        """Finaliza a viagem (delegado para Viagem e limpa a referência)."""
+        if self.viagem:
+            try:
+                self.viagem.concluir()
+            finally:
+                self.viagem = None
     
     @property
     def progresso_percentual(self) -> float:
         """Retorna o progresso da viagem em percentual (0-100)."""
-        if not self.viagem_ativa or self.distancia_total == 0:
+        if not self.viagem:
             return 0.0
-        return min(100.0, (self.distancia_percorrida / self.distancia_total) * 100.0)
+        return self.viagem.progresso_percentual
     
     @property
     def destino(self) -> str:
         """Retorna o destino final da rota."""
-        return self.rota[-1] if self.rota else None
+        return self.viagem.destino if self.viagem else None
+
+    @property
+    def pedido_id(self):
+        return self.viagem.pedido_id if self.viagem else None
 
 # -------------------- Veículo a Combustão ---------------- #
 
@@ -246,21 +167,26 @@ class VeiculoEletrico(Veiculo):
                  custo_operacional_km, tempo_recarga_km: int, numero_passageiros=0, localizacao_atual=0):
         super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
                          numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
-        self.tempo_recarga_km = tempo_recarga_km  # tempo médio para carga de um km
+        # tempo médio para carga de um km (armazenado em campo protegido)
+        self._tempo_recarga_km = tempo_recarga_km
 
 
     def tempoReabastecimento(self):
         tempo = self.tempo_recarga_km * (self.autonomia_maxima - self.autonomia_atual)
         return tempo
 
+    @property
+    def tempo_recarga_km(self) -> int:
+        return self._tempo_recarga_km
+
 
 # -------------------- Propriedades (getters/setters) --------------------
-@property
-def tempo_recarga_km(self) -> int:
-    return self._tempo_recarga_km
-
-
 
 
     
+
+
+
+
+
 
