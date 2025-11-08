@@ -1,0 +1,73 @@
+{
+  "veiculos": [
+    {
+      "id_veiculo": 1,
+      "tipo": "combustao",
+      "autonomia_maxima": 500,
+      "autonomia_atual": 450,
+      "capacidade_passageiros": 4,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.15,
+      "estado": "DISPONIVEL",
+      "localizacao_atual": "Monte"
+    },
+    {
+      "id_veiculo": 2,
+      "tipo": "combustao",
+      "autonomia_maxima": 600,
+      "autonomia_atual": 300,
+      "capacidade_passageiros": 7,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.20,
+      "estado": "DISPONIVEL",
+      "localizacao_atual": "Descampado"
+    },
+    {
+      "id_veiculo": 3,
+      "tipo": "eletrico",
+      "autonomia_maxima": 400,
+      "autonomia_atual": 380,
+      "capacidade_passageiros": 5,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.08,
+      "tempo_recarga_km": 2,
+      "estado": "DISPONIVEL",
+      "localizacao_atual": "Monte"
+    },
+    {
+      "id_veiculo": 4,
+      "tipo": "eletrico",
+      "autonomia_maxima": 350,
+      "autonomia_atual": 100,
+      "capacidade_passageiros": 4,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.07,
+      "tempo_recarga_km": 1.5,
+      "estado": "EM_REABASTECIMENTO",
+      "localizacao_atual": "Rampa"
+    },
+    {
+      "id_veiculo": 5,
+      "tipo": "combustao",
+      "autonomia_maxima": 700,
+      "autonomia_atual": 700,
+      "capacidade_passageiros": 8,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.25,
+      "estado": "DISPONIVEL",
+      "localizacao_atual": "Prometeu"
+    },
+    {
+      "id_veiculo": 6,
+      "tipo": "eletrico",
+      "autonomia_maxima": 450,
+      "autonomia_atual": 450,
+      "capacidade_passageiros": 5,
+      "numero_passageiros": 0,
+      "custo_operacional_km": 0.09,
+      "tempo_recarga_km": 1.8,
+      "estado": "DISPONIVEL",
+      "localizacao_atual": "Prometeu"
+    }
+  ]
+}

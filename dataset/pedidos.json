@@ -1,0 +1,84 @@
+{
+  "pedidos": [
+    {
+      "pedido_id": 1,
+      "origem": 0,
+      "destino": 2,
+      "passageiros": 3,
+      "horario_pretendido": "2025-01-01T08:01:00",
+      "prioridade": 2,
+      "preferencia_ambiental": 1,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 2,
+      "origem": 1,
+      "destino": 3,
+      "passageiros": 2,
+      "horario_pretendido": "2025-01-01T08:01:30",
+      "prioridade": 1,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 3,
+      "origem": 2,
+      "destino": 0,
+      "passageiros": 4,
+      "horario_pretendido": "2025-01-01T08:02:00",
+      "prioridade": 3,
+      "preferencia_ambiental": 1,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 4,
+      "origem": 3,
+      "destino": 1,
+      "passageiros": 1,
+      "horario_pretendido": "2025-01-01T08:02:30",
+      "prioridade": 1,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 5,
+      "origem": 0,
+      "destino": 3,
+      "passageiros": 5,
+      "horario_pretendido": "2025-11-07T12:30:00",
+      "prioridade": 2,
+      "preferencia_ambiental": 1,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 6,
+      "origem": 2,
+      "destino": 1,
+      "passageiros": 2,
+      "horario_pretendido": "2025-11-07T14:00:00",
+      "prioridade": 1,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 7,
+      "origem": 1,
+      "destino": 0,
+      "passageiros": 3,
+      "horario_pretendido": "2025-11-07T15:30:00",
+      "prioridade": 2,
+      "preferencia_ambiental": 1,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 8,
+      "origem": 3,
+      "destino": 2,
+      "passageiros": 6,
+      "horario_pretendido": "2025-11-07T16:45:00",
+      "prioridade": 3,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    }
+  ]
+}
