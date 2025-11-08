@@ -5,7 +5,6 @@ Coordena ambiente, algoritmos, métricas e display.
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import os
-import sys
 import time
 
 from infra.gestaoAmbiente import GestaoAmbiente
@@ -142,7 +141,7 @@ class Simulador:
         self._log("="*60 + "\n")
         
         if self.display:
-            self.display.iniciar(self.ambiente)
+            self.display.iniciar(self.ambiente) #TODO: Display deve ter a função iniciar
         
         # Agendar chegada de todos os pedidos
         self._agendar_pedidos()
@@ -151,8 +150,6 @@ class Simulador:
         tempo_inicio_real = time.time()  # Tempo real de início
         tempo_decorrido_simulacao = timedelta(0)  # Tempo simulado decorrido
 
-
-        
         while self.tempo_simulacao < tempo_final and self.em_execucao:
             # 1. Processar eventos agendados até o tempo atual
             #TODO: até agora nao há nenhum sitio onde adicione os eventos, falta fazer isso, sugeria ler os eventos de um ficheiro, para depois ser mais facil analisar o que acontece conforme os eventos acontecidos
@@ -165,7 +162,7 @@ class Simulador:
             self.gestor_eventos.atualizar(self.tempo_simulacao)
             
             # 4. Atualizar display animado (se disponível)
-            #TODO: mudar o nome/adaptar para display
+            #TODO: display deve ter uma função que atualize simulação
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas) #NOTA: adaptar display a isto
             
