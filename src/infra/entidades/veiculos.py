@@ -124,11 +124,13 @@ class Veiculo(ABC):
             return True
         return False
     
-    def concluir_viagem(self):
+    def concluir_viagem(self, destino):
         """Finaliza a viagem (delegado para Viagem e limpa a referência)."""
         if self.viagem:
             try:
                 self.viagem.concluir()
+                self.localizacao_atual = destino
+                self.estado = EstadoVeiculo.DISPONIVEL
             finally:
                 self.viagem = None
     

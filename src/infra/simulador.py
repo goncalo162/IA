@@ -240,19 +240,14 @@ class Simulador:
         
         # Processar viagens concluídas
         for veiculo_id, veiculo in viagens_concluidas:
-            self._concluir_viagem(veiculo_id, veiculo)
+            self._concluir_viagem(veiculo)
             del self.viagens_ativas[veiculo_id]
     
-    def _concluir_viagem(self, veiculo_id: str, veiculo):
+    def _concluir_viagem(self, veiculo):
         """Processa a conclusão de uma viagem."""
-        pedido_id = veiculo.pedido_id
-        destino_nome = veiculo.destino
-        
-        veiculo.localizacao_atual = destino_nome
-        veiculo.estado = EstadoVeiculo.DISPONIVEL
-        veiculo.concluir_viagem()
-        
-        log_msg = f"[green]✓[/] Viagem concluída: Pedido #{pedido_id} | Veículo {veiculo_id} em {destino_nome}"
+        self.ambiente.concluir_pedido(veiculo.pedido_id)
+
+        log_msg = f"[green]✓[/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
         
         # Update metrics

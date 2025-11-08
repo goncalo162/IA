@@ -162,7 +162,7 @@ class GestaoAmbiente:
 
         veiculo = self.obter_veiculo(pedido.atribuir_a)
         if veiculo:
-            veiculo.estado = veiculo.estado.DISPONIVEL
+            veiculo.concluir_viagem(pedido.destino)
         pedido.estado = pedido.estado.CONCLUIDO
         return True
     
