@@ -95,9 +95,18 @@ def main():
         sys.exit(1)
     
 
-    #TODO: Escolher alocador á semelhança do navegador quando houver algoritmos para isso
     # Escolher alocador (pode ser alterado aqui para testar diferentes estratégias)
-    alocador = None  # Substituir por instância de alocador desejado
+    # Por omissão, usamos um alocador simples que escolhe o primeiro veículo apenas para testar a main
+    # disponível com capacidade suficiente. Isto evita que `alocador` fique
+    # como None e cause erros em tempo de execução.
+
+    #TODO: sq meter este import la em cima como os outros
+    try:
+        from algoritmos.algoritmos_alocacao import AlocadorSimples
+        alocador = AlocadorSimples()
+    except Exception:
+        # Fallback caso haja algum problema a importar o alocador simples
+        alocador = None
     
     # Configuração de timing da simulação
     # frequencia_calculo: quantas vezes os cálculos são feitos por segundo real (Hz)

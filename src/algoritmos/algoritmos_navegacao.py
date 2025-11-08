@@ -1,6 +1,6 @@
 from collections import deque
 from algoritmos.navegador_base import NavegadorBase
-from infra.grafo import Grafo
+from infra.grafo.grafo import Grafo
 
 #Implementação dos algoritmos de navegação
 
