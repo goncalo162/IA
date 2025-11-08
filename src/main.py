@@ -130,6 +130,7 @@ def main():
     '''
     
     # Criar e configurar simulador
+    #TODO: meter os imports todos la em cima
     try:
         from datetime import datetime
         

@@ -23,6 +23,7 @@ class Veiculo(ABC):
         self._estado = estado
         self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
         
+        #TODO: rever isto e ver se fazemos uma classe viagem
         # Informações da viagem em andamento
         self.viagem_ativa = False
         self.pedido_id = None

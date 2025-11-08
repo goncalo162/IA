@@ -80,3 +80,5 @@ class NavegadorBFS(NavegadorBase):
 
     def nome_algoritmo(self) -> str:
         return "BFS (Breadth-First Search)"
+
+        
