@@ -139,19 +139,17 @@ class GestaoAmbiente:
         return self._pedidos.pop(pedido_id, None)
 
     # -------------------- Atribuição de Pedidos a Veículos --------------------
-    def atribuir_pedido_a_veiculo(self, pedido_id: int, veiculo_id: int) -> bool:
+    def atribuir_pedido_a_veiculo(self, pedido: Pedido, veiculo: Veiculo, distancia_total: float) -> bool:
         """Atribui um pedido a um veículo já escolhido e atualiza os estados."""
-        pedido = self.obter_pedido(pedido_id)
-        if pedido is None:
-            return False
-
-        veiculo = self.obter_veiculo(veiculo_id)
-        if veiculo is None:
+        if pedido is None or veiculo is None:
             return False
 
         pedido.atribuir_a = veiculo.id_veiculo
         pedido.estado = pedido.estado.EM_CURSO
         veiculo.estado = veiculo.estado.EM_ANDAMENTO
+
+        veiculo.atualizar_autonomia(distancia_total)
+
         return True	
 
     def concluir_pedido(self, pedido_id: int) -> bool:

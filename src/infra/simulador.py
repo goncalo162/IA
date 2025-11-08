@@ -340,9 +340,8 @@ class Simulador:
             return
         
         # 5. Iniciar viagem
-        veiculo.estado = EstadoVeiculo.EM_ANDAMENTO
-        pedido.estado = pedido._estado.__class__.EM_CURSO
-        veiculo.atualizar_autonomia(int(distancia_total))
+
+        self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo, distancia_total)
         
         veiculo.iniciar_viagem(
             pedido_id=pedido.id,
