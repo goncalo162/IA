@@ -1,65 +1,156 @@
+"""
+Simulador de Gestão de Frota de Táxis Inteligente
+Projeto de IA - UMinho 2025
+"""
 import sys
 import os
-import threading
-from datetime import datetime
 
 # Garantir que o root do projecto está no path para imports relativos funcionarem
 src_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(src_dir)
-# garantir src e project root no path (origem de imports locais)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from infra.grafo import Grafo
-from infra.gestaoAmbiente import GestaoFrota
-from infra.entidades.pedidos import Pedido
-from infra.entidades.veiculos import VeiculoCombustao, VeiculoEletrico
-from display.display import run_combined
-
-
-def start_display(grafo, algoritmo):
-    # run_combined bloqueia (Textual) — executá-lo numa thread para o main continuar
-    run_combined(grafo, algoritmo)
+from infra.simulador import Simulador
+from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Uso: python3 src/main.py <graph.json> <algorithm: bfs|dfs>")
+    """
+    Ponto de entrada principal do simulador.
+    
+    Uso:
+        python src/main.py <grafo.json> <veiculos.json> <pedidos.json> <algoritmo> [velocidade]  [--no-display]
+        (falta o json dos eventos se necessário) 
+    
+    Algoritmos disponíveis:
+        - bfs: Breadth-First Search
+        - dfs: Depth-First Search
+    
+    Velocidade (opcional):
+        - Número decimal que multiplica a velocidade de visualização
+        - 1.0 = tempo real (padrão)
+        - 2.0 = 2x mais rápido
+        - 0.5 = 2x mais lento
+
+    Alocadores disponíveis:
+
+    """
+    
+    caminho_grafo = sys.argv[1]
+    caminho_veiculos = sys.argv[2]
+    caminho_pedidos = sys.argv[3]
+    # caminho_eventos = sys.argv[4]
+    algoritmo_navegacao = sys.argv[4].lower()
+    
+    # Verificar se modo sem display está ativo
+    no_display = '--no-display' in sys.argv
+    
+    # Velocidade de visualização (opcional)
+    velocidade_display = 1.0
+    if len(sys.argv) > 5:
+        # Tentar extrair velocidade (pode ser antes ou depois de --no-display)
+        for arg in sys.argv[5:]:
+            if arg != '--no-display':
+                try:
+                    velocidade_display = float(arg)
+                    if velocidade_display <= 0:
+                        print(" Velocidade deve ser maior que 0")
+                        sys.exit(1)
+                    break
+                except ValueError:
+                    print(f" Argumento inválido: {arg}")
+                    print("   Use: <velocidade> e/ou --no-display")
+                    sys.exit(1)
+    
+    # Verificar ficheiros
+    for caminho in [caminho_grafo, caminho_veiculos, caminho_pedidos]:
+        if not os.path.exists(caminho):
+            print(f" Ficheiro '{caminho}' não encontrado")
+            sys.exit(1)
+    
+    # Escolher algoritmo de navegação
+    '''TODO: Em vez de um if else, poderíamos usar um dicionário para mapear strings a classes
+    
+        navegadores = {
+        "bfs": NavegadorBFS,
+        "dfs": NavegadorDFS
+    }
+
+    if algoritmo_navegacao in navegadores:
+        navegador = navegadores[algoritmo_navegacao]()
+    
+    
+    '''
+
+    if algoritmo_navegacao == "bfs":
+        navegador = NavegadorBFS()
+    elif algoritmo_navegacao == "dfs":
+        navegador = NavegadorDFS()
+    else:
+        print(f" Algoritmo '{algoritmo_navegacao}' não reconhecido")
+        print("   Algoritmos disponíveis: bfs, dfs")
         sys.exit(1)
+    
 
-    graph_path = sys.argv[1]
-    algoritmo = sys.argv[2].lower()
+    #TODO: Escolher alocador á semelhança do navegador quando houver algoritmos para isso
+    # Escolher alocador (pode ser alterado aqui para testar diferentes estratégias)
+    alocador = None  # Substituir por instância de alocador desejado
+    
+    # Configuração de timing da simulação
+    # frequencia_calculo: quantas vezes os cálculos são feitos por segundo real (Hz)
+    # frequencia_display: quantas vezes o display mostra informação atualizada por segundo real (Hz)
+    # velocidade_simulacao: velocidade com que é mostrada a simulação relativa ao tempo real (1.0 = tempo real)
 
-    if not os.path.exists(graph_path):
-        print(f"Ficheiro de grafo '{graph_path}' não encontrado")
-        sys.exit(1)
+    #TODO: decidir se queremos ter constantes em cima ou receber por argumento (ou mix, receber por argumento opcional mas ter default aqui)
+    frequencia_calculo = 10.0  # 10 cálculos por segundo real (atualiza a cada 0.1s real)
+    frequencia_display = 10.0  # 10 frames por segundo real (redesenha a cada 0.1s real)
 
-    if algoritmo not in ("bfs", "dfs"):
-        print("Algoritmo deve ser 'bfs' ou 'dfs'")
-        sys.exit(1)
+    # Criar display (ou não, se --no-display)
+    if no_display:
+        display = None
+        print(" Modo sem display ativado (execução mais rápida)")
 
+    ''' TODO: juntar com o display aqui
+    
+        else :
+            display = DisplayGrafico(frequencia_display=frequencia_display)
+            display.set_velocidade_simulacao(velocidade_display)
+    '''
+    
+    # Criar e configurar simulador
     try:
-        grafo = Grafo.from_json_file(graph_path)
-        print(f"Grafo carregado a partir de {graph_path}")
+        from datetime import datetime
+        
+        # Tempo inicial da simulação: 2025-01-01 08:00:00 (tempo fixo para ser mais facil testes)
+        tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
+        
+        simulador = Simulador(
+            alocador=alocador,
+            navegador=navegador,
+            display=display,
+            tempo_inicial=tempo_inicial,
+            frequencia_calculo=frequencia_calculo,
+            velocidade_simulacao=velocidade_display
+        )
+        
+        # Carregar dados
+        simulador.carregar_dados(
+            caminho_grafo=caminho_grafo,
+            caminho_veiculos=caminho_veiculos,
+            caminho_pedidos=caminho_pedidos
+        )
+        
+        # Executar simulação (8 horas de operação valor default, talvez receber por argumentono futuro ou uma constante)
+        simulador.executar(duracao_horas=8.0)
+        
     except Exception as e:
-        print(f"Falha ao carregar o grafo: {e}")
+        print(f"\n Erro durante a simulação: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
-
-    # Instanciar gestor de frota
-    gestor = GestaoFrota()
-
-    # Adicionar alguns veículos de exemplo
-    v1 = VeiculoCombustao(1, 500, 500, 4, 0, 0.12)
-    v2 = VeiculoEletrico(2, 250, 250, 4, tempo_recarga_km=1, numero_passageiros=0, custo_operacional_km=0.05)
-    gestor.adicionar_veiculo(v1)
-    gestor.adicionar_veiculo(v2)
-
-    # Iniciar display numa thread
-    t = threading.Thread(target=start_display, args=(grafo, algoritmo), daemon=True)
-    t.start()
-
 
 
 if __name__ == '__main__':
