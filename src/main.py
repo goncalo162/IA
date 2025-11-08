@@ -13,7 +13,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from infra.grafo import Grafo
-from infra.gestaoFrota import GestaoFrota
+from infra.gestaoAmbiente import GestaoFrota
 from infra.entidades.pedidos import Pedido
 from infra.entidades.veiculos import VeiculoCombustao, VeiculoEletrico
 from display.display import run_combined
