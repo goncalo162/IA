@@ -1,4 +1,3 @@
-
 import threading
 import queue
 
@@ -8,7 +7,7 @@ import os
 # Add project root to Python path (so grafos can be imported)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from graph.grafo import Grafo
+from infra.grafo.grafo import Grafo
 from graph.algoritmos_procura import bfs, dfs
 from terminal.textual_controller import GraphCarController
 from aplicacao.graph_viewer import AnimatedGraphApp

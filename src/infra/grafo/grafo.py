@@ -1,7 +1,7 @@
 import json
 import math
-from graph.node import Node, TipoNodo
-from graph.aresta import Aresta, NivelTransito
+from .node import Node, TipoNodo
+from .aresta import Aresta, NivelTransito
 
 
 class Grafo:
@@ -95,6 +95,37 @@ class Grafo:
         for (adjacente, peso) in self.m_graph[nodo]:
             lista.append((adjacente, peso))
         return lista
+
+    def getNodeName(self, node_id_or_name):
+        """
+        Retorna o nome de um nodo dado o seu ID ou, se já for um nome, devolve-o.
+        Se não encontrar, devolve None.
+        """
+        # Se já for string, assumir que é o nome e devolver tal como está
+        if isinstance(node_id_or_name, str):
+            return node_id_or_name
+
+        # Se for inteiro, procurar o node com esse id
+        try:
+            for node in self.m_nodes:
+                if node.getId() == node_id_or_name:
+                    return node.getName()
+        except Exception:
+            pass
+
+        return None
+
+    def getEdge(self, from_node: str, to_node: str):
+        """
+        Devolve o objeto Aresta entre dois nós (nomes). Se não existir, devolve None.
+        """
+        if from_node not in self.m_graph:
+            return None
+        for (dest, aresta) in self.m_graph[from_node]:
+            if dest == to_node:
+                return aresta
+        return None
+
 
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
