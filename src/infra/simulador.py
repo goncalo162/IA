@@ -10,7 +10,6 @@ import time
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
-from infra.entidades.veiculos import EstadoVeiculo
 
 # Constante: velocidade máxima com sincronização em tempo real
 VELOCIDADE_MAXIMA_SINCRONIZADA = 100.0
