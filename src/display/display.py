@@ -19,7 +19,7 @@ from textual.widgets import Header, Footer, Input, Button, Static
 
 # --- Import your project modules ---
 from infra.grafo import Grafo
-from algoritmos.algoritmos_procura import bfs, dfs
+from algoritmos.algoritmos_navegacao import bfs, dfs
 
 # --- Shared command queue for communication between Textual and Tkinter ---
 command_queue = queue.Queue()

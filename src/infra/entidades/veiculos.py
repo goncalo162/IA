@@ -12,7 +12,7 @@ class EstadoVeiculo(Enum):
 class Veiculo(ABC):
     def __init__(self, id_veiculo: int, autonomia_maxima: int, autonomia_atual: int,
                  capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
-                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL):
+                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual = 0):
         # atributos protegidos (encapsulados) — aceder via propriedades
         self._id_veiculo = id_veiculo
         self._autonomia_maxima = autonomia_maxima
@@ -21,6 +21,18 @@ class Veiculo(ABC):
         self._numero_passageiros = numero_passageiros
         self._custo_operacional_km = custo_operacional_km
         self._estado = estado
+        self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
+        
+        # Informações da viagem em andamento
+        self.viagem_ativa = False
+        self.pedido_id = None
+        self.rota = []
+        self.distancia_total = 0.0
+        self.distancia_percorrida = 0.0
+        self.tempo_inicio = None
+        self.segmentos = []
+        self.indice_segmento_atual = 0
+        self.distancia_no_segmento = 0.0
 
     @abstractmethod
     def reabastecer(self):
@@ -65,6 +77,10 @@ class Veiculo(ABC):
     @property
     def autonomia_atual(self) -> int:
         return self._autonomia_atual
+    
+    @autonomia_atual.setter
+    def autonomia_atual(self, value: int):
+        self._autonomia_atual = max(0, value)
 
     @property
     def capacidade_passageiros(self) -> int:
@@ -87,14 +103,136 @@ class Veiculo(ABC):
     @property
     def numero_passageiros(self) -> int:
         return self._numero_passageiros
+    
+    @property
+    def localizacao_atual(self):
+        """Retorna a localização atual (nome do nó ou ID)."""
+        return self._localizacao_atual
+    
+    @localizacao_atual.setter
+    def localizacao_atual(self, value):
+        """Define a localização atual (pode ser nome do nó ou ID)."""
+        self._localizacao_atual = value
+    
+    def iniciar_viagem(self, pedido_id: int, rota: list, distancia_total: float, tempo_inicio, grafo, velocidade_media: float = 50.0):
+        """Inicia uma viagem no veículo."""
+        from datetime import datetime
+        
+        self.viagem_ativa = True
+        self.pedido_id = pedido_id
+        self.rota = rota
+        self.distancia_total = distancia_total
+        self.distancia_percorrida = 0.0
+        self.tempo_inicio = tempo_inicio
+        self.indice_segmento_atual = 0
+        self.distancia_no_segmento = 0.0
+        
+        # Pré-calcular informações dos segmentos
+        self.segmentos = []
+        for i in range(len(rota) - 1):
+            origem = rota[i]
+            destino = rota[i + 1]
+            aresta = grafo.getEdge(origem, destino)
+            
+            if aresta:
+                distancia = aresta.getQuilometro()
+                velocidade = aresta.getVelocidadeMaxima()
+                transito = aresta.getTransito()
+                
+                # Calcular tempo baseado na velocidade da aresta e trânsito
+                tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
+                fator_transito = transito.value if transito.value is not None else 1.0
+                tempo_horas = tempo_base_horas * fator_transito
+                
+                self.segmentos.append({
+                    'origem': origem,
+                    'destino': destino,
+                    'distancia': distancia,
+                    'velocidade': velocidade,
+                    'tempo_horas': tempo_horas
+                })
+            else:
+                # Fallback se não houver aresta
+                distancia_fallback = 10.0
+                self.segmentos.append({
+                    'origem': origem,
+                    'destino': destino,
+                    'distancia': distancia_fallback,
+                    'velocidade': velocidade_media,
+                    'tempo_horas': distancia_fallback / velocidade_media
+                })
+    
+    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
+        """
+        Atualiza o progresso da viagem baseado no tempo decorrido.
+        Retorna True se a viagem foi concluída.
+        """
+        if not self.viagem_ativa or not self.segmentos:
+            return False
+        
+        tempo_restante = tempo_decorrido_horas
+        
+        while tempo_restante > 0 and self.indice_segmento_atual < len(self.segmentos):
+            segmento = self.segmentos[self.indice_segmento_atual]
+            distancia_segmento = segmento['distancia']
+            tempo_segmento = segmento['tempo_horas']
+            
+            # Calcular quanto falta percorrer neste segmento
+            distancia_restante_segmento = distancia_segmento - self.distancia_no_segmento
+            tempo_para_concluir_segmento = (distancia_restante_segmento / distancia_segmento) * tempo_segmento
+            
+            if tempo_restante >= tempo_para_concluir_segmento:
+                # Concluir este segmento e avançar para o próximo
+                self.distancia_percorrida += distancia_restante_segmento
+                self.distancia_no_segmento = 0.0
+                self.indice_segmento_atual += 1
+                tempo_restante -= tempo_para_concluir_segmento
+            else:
+                # Avançar parcialmente neste segmento
+                velocidade_efetiva = distancia_segmento / tempo_segmento if tempo_segmento > 0 else 0
+                distancia_avancada = velocidade_efetiva * tempo_restante
+                self.distancia_no_segmento += distancia_avancada
+                self.distancia_percorrida += distancia_avancada
+                tempo_restante = 0
+        
+        # Verificar se a viagem foi concluída
+        if self.indice_segmento_atual >= len(self.segmentos):
+            self.viagem_ativa = False
+            return True
+        
+        return False
+    
+    def concluir_viagem(self):
+        """Finaliza a viagem."""
+        self.viagem_ativa = False
+        self.pedido_id = None
+        self.rota = []
+        self.distancia_total = 0.0
+        self.distancia_percorrida = 0.0
+        self.tempo_inicio = None
+        self.segmentos = []
+        self.indice_segmento_atual = 0
+        self.distancia_no_segmento = 0.0
+    
+    @property
+    def progresso_percentual(self) -> float:
+        """Retorna o progresso da viagem em percentual (0-100)."""
+        if not self.viagem_ativa or self.distancia_total == 0:
+            return 0.0
+        return min(100.0, (self.distancia_percorrida / self.distancia_total) * 100.0)
+    
+    @property
+    def destino(self) -> str:
+        """Retorna o destino final da rota."""
+        return self.rota[-1] if self.rota else None
 
 # -------------------- Veículo a Combustão ---------------- #
 
 class VeiculoCombustao(Veiculo):
     def __init__(self, id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                 custo_operacional_km): #meter custo litro por kilometro se for preciso
+                 custo_operacional_km, numero_passageiros=0, localizacao_atual=0): #meter custo litro por kilometro se for preciso
         super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                         custo_operacional_km)
+                         numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
 
     def tempoReabastecimento(self):
         return 5  # tempo fixo de reabastecimento em minutos, NOTA: pode ser ajustado conforme necessário
@@ -104,9 +242,9 @@ class VeiculoCombustao(Veiculo):
 
 class VeiculoEletrico(Veiculo):
     def __init__(self, id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                 custo_operacional_km, tempo_recarga_km: int):
+                 custo_operacional_km, tempo_recarga_km: int, numero_passageiros=0, localizacao_atual=0):
         super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                         custo_operacional_km)
+                         numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
         self.tempo_recarga_km = tempo_recarga_km  # tempo médio para carga de um km
 
 
