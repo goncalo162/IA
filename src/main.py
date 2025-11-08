@@ -4,6 +4,10 @@ Projeto de IA - UMinho 2025
 """
 import sys
 import os
+from datetime import datetime
+from algoritmos.algoritmos_alocacao import AlocadorSimples
+from infra.simulador import Simulador
+from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
 
 # Garantir que o root do projecto está no path para imports relativos funcionarem
 src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -13,9 +17,13 @@ if src_dir not in sys.path:
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from infra.simulador import Simulador
-from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
-
+DURACAO_HORAS_DEFAULT = 8.0
+# frequencia_calculo: quantas vezes os cálculos são feitos por segundo real (Hz)
+FREQUENCIA_CALCULO_DEFAULT = 10.0  # 10 cálculos por segundo real (atualiza a cada 0.1s real)
+# frequencia_display: quantas vezes o display mostra informação atualizada por segundo real (Hz)
+FREQUENCIA_DISPLAY_DEFAULT = 10.0  # 10 frames por segundo real (redesenha a cada 0.1s real)
+# velocidade_simulacao: velocidade com que é mostrada a simulação relativa ao tempo real (1.0 = tempo real)
+VELOCIDADE_SIMULACAO_DEFAULT = 1.0  # 1.0 = tempo real
 
 def main():
     """
@@ -42,8 +50,9 @@ def main():
     caminho_grafo = sys.argv[1]
     caminho_veiculos = sys.argv[2]
     caminho_pedidos = sys.argv[3]
-    # caminho_eventos = sys.argv[4]
+    # caminho_eventos = sys.argv[4] TODO: receber os eventos por argumento
     algoritmo_navegacao = sys.argv[4].lower()
+    #algoritmo_alocacao = sys.argv[5].lower() TODO: receber o algoritmo de alocação por argumento
     
     # Verificar se modo sem display está ativo
     no_display = '--no-display' in sys.argv
@@ -72,50 +81,37 @@ def main():
             sys.exit(1)
     
     # Escolher algoritmo de navegação
-    '''TODO: Em vez de um if else, poderíamos usar um dicionário para mapear strings a classes
-    
-        navegadores = {
-        "bfs": NavegadorBFS,
-        "dfs": NavegadorDFS
+    navegadores = {
+        "bfs": NavegadorBFS(),
+        "dfs": NavegadorDFS()
     }
 
     if algoritmo_navegacao in navegadores:
-        navegador = navegadores[algoritmo_navegacao]()
-    
-    
-    '''
-
-    if algoritmo_navegacao == "bfs":
-        navegador = NavegadorBFS()
-    elif algoritmo_navegacao == "dfs":
-        navegador = NavegadorDFS()
+        navegador = navegadores[algoritmo_navegacao]
     else:
         print(f" Algoritmo '{algoritmo_navegacao}' não reconhecido")
         print("   Algoritmos disponíveis: bfs, dfs")
         sys.exit(1)
     
+    # Escolher algoritmo de alocação
+    alocadores = {
+        "simples": AlocadorSimples()
+    }
 
-    # Escolher alocador (pode ser alterado aqui para testar diferentes estratégias)
-    # Por omissão, usamos um alocador simples que escolhe o primeiro veículo apenas para testar a main
-    # disponível com capacidade suficiente. Isto evita que `alocador` fique
-    # como None e cause erros em tempo de execução.
+  #  if algoritmo_alocacao in alocadores:
+  #      alocador = alocadores[algoritmo_alocacao]
+  #  else:
+  #      print(f" Algoritmo de alocação '{algoritmo_alocacao}' não reconhecido")
+  #      print("   Algoritmos disponíveis: simples")
+  #      sys.exit(1)
 
-    #TODO: sq meter este import la em cima como os outros
-    try:
-        from algoritmos.algoritmos_alocacao import AlocadorSimples
-        alocador = AlocadorSimples()
-    except Exception:
-        # Fallback caso haja algum problema a importar o alocador simples
-        alocador = None
+    #TODO: passar o alocador como argumento no futuro para permitir diferentes estratégias e fazer como os algoritmos de navegação
+    alocador = AlocadorSimples()
     
     # Configuração de timing da simulação
-    # frequencia_calculo: quantas vezes os cálculos são feitos por segundo real (Hz)
-    # frequencia_display: quantas vezes o display mostra informação atualizada por segundo real (Hz)
-    # velocidade_simulacao: velocidade com que é mostrada a simulação relativa ao tempo real (1.0 = tempo real)
-
-    #TODO: decidir se queremos ter constantes em cima ou receber por argumento (ou mix, receber por argumento opcional mas ter default aqui)
-    frequencia_calculo = 10.0  # 10 cálculos por segundo real (atualiza a cada 0.1s real)
-    frequencia_display = 10.0  # 10 frames por segundo real (redesenha a cada 0.1s real)
+    #TODO: decidir se queremos receber por argumento 
+    frequencia_calculo = FREQUENCIA_CALCULO_DEFAULT
+    frequencia_display = FREQUENCIA_DISPLAY_DEFAULT
 
     # Criar display (ou não, se --no-display)
     if no_display:
@@ -130,11 +126,8 @@ def main():
     '''
     
     # Criar e configurar simulador
-    #TODO: meter os imports todos la em cima
-    try:
-        from datetime import datetime
-        
-        # Tempo inicial da simulação: 2025-01-01 08:00:00 (tempo fixo para ser mais facil testes)
+    try:  
+        # Tempo inicial da simulação: 2025-01-01 08:00:00 (tempo fixo para ser mais fácil testes)
         tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
         
         simulador = Simulador(
@@ -153,15 +146,14 @@ def main():
             caminho_pedidos=caminho_pedidos
         )
         
-        # Executar simulação (8 horas de operação valor default, talvez receber por argumentono futuro ou uma constante)
-        simulador.executar(duracao_horas=8.0)
+        # Executar simulação (8 horas de operação valor default, talvez receber por argumento no futuro ou uma constante)
+        simulador.executar(duracao_horas=DURACAO_HORAS_DEFAULT)
         
     except Exception as e:
         print(f"\n Erro durante a simulação: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == '__main__':
     main()
