@@ -254,7 +254,7 @@ class Simulador:
 
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
-        self._log(f"\n⏰ {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
+        self._log(f"\n {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
         
         # 1. Escolher veículo
         veiculo = self.alocador.escolher_veiculo(
@@ -323,8 +323,8 @@ class Simulador:
         custo = distancia_viagem * veiculo.custo_operacional_km
         emissoes = self._calcular_emissoes(veiculo, distancia_viagem)
         
-        self._log(f"   📍 Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
-        self._log(f"   💰 Custo: €{custo:.2f} | 🌱 Emissões: {emissoes:.2f} kg CO₂")
+        self._log(f"    Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
+        self._log(f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
         
         # 4. Verificar autonomia
         if veiculo.autonomia_atual < distancia_total:
@@ -356,9 +356,9 @@ class Simulador:
             custo=custo,
             emissoes=emissoes
         )
-        
-        self._log(f"  [green]🚗[/] Viagem iniciada - ETA: {tempo_ate_cliente + tempo_viagem:.1f} min")
-        
+
+        self._log(f"  [green][/] Viagem iniciada - ETA: {tempo_ate_cliente + tempo_viagem:.1f} min")
+
         # Update displays
         if self.display:
             self.display.atualizar(pedido, veiculo, rota_completa)
