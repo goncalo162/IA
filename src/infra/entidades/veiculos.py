@@ -113,16 +113,16 @@ class Veiculo(ABC):
         """Inicia uma viagem no veículo criando um objeto Viagem."""
         self.viagem = Viagem(pedido_id=pedido_id, rota=rota, distancia_total=distancia_total,
                              tempo_inicio=tempo_inicio, grafo=grafo, velocidade_media=velocidade_media)
-    
+        # TODO: este atualiza a autonomia imediatamente, rever para ir atualizando progressivamente durante a viagem, nem que seja de nodo em nodo
+        self.atualizar_autonomia(distancia_total) 
+
+
     def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
-        """Delegates progress update to Viagem. Retorna True se concluída."""
+        """Delega atualização de progresso para Viagem. Retorna True se viagem for concluída."""
         if not self.viagem:
             return False
-        concluiu = self.viagem.atualizar_progresso(tempo_decorrido_horas)
-        if concluiu:
-            # viagem concluída — o simulador tratará atualização do local
-            return True
-        return False
+        return self.viagem.atualizar_progresso(tempo_decorrido_horas)
+   
     
     def concluir_viagem(self, destino):
         """Finaliza a viagem (delegado para Viagem e limpa a referência)."""

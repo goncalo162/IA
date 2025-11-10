@@ -52,7 +52,7 @@ class Viagem:
 
     def atualizar_progresso(self, tempo_decorrido_horas: float) -> bool:
         """
-        Atualiza o progresso da viagem baseado no tempo decorrido.
+        Atualiza as físicas do progresso da viagem baseado no tempo decorrido.
         Retorna True se a viagem foi concluída.
         """
         if not self.segmentos:

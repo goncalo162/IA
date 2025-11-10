@@ -93,12 +93,12 @@ class Simulador:
         self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
-        
-        # Send initial metrics to TUI
-        self._update_tui_metrics()
+       
+        self._update_tui_metrics() #mandar métricas iniciais para o TUI
     
+    #TODO: rename simbol nisto para portugues
     def _update_tui_metrics(self):
-        """Send current metrics to TUI dashboard."""
+        """Manda métricas atuais para o TUI."""
         if self.display and hasattr(self.display, 'command_queue'):
             self.display.command_queue.put({
                 "type": "metrics",
@@ -106,7 +106,7 @@ class Simulador:
                 "rejeitados": self.metricas.pedidos_rejeitados,
                 "disponiveis": len(self.ambiente.listar_veiculos_disponiveis())
             })
-    
+
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
         self.em_execucao = True
@@ -126,11 +126,14 @@ class Simulador:
         self._log(f"Passo temporal simulado: {self.passo_tempo.total_seconds()} segundos")
         self._log("="*60 + "\n")
         
+        # Iniciar display se disponível
         if self.display:
             self.display.iniciar(self.ambiente)
         
         # Agendar chegada de todos os pedidos
         self._agendar_pedidos()
+
+        #TODO: Iniciar e adicionar outros eventos dinâmicos 
         
         # Loop principal da simulação
         tempo_inicio_real = time.time()
@@ -149,12 +152,12 @@ class Simulador:
             
             # 4. Atualizar displays (gráfico e TUI)
             contador_updates += 1
-            if contador_updates % 5 == 0:  # Update display every 5 steps
+            if contador_updates % 5 == 0:  # Atualizar a cada 5 passos de tempo
                 if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                     self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas)
-                
-                # Update TUI metrics periodically
-                if contador_updates % 20 == 0:  # Every 20 steps
+
+                # Atualizar métricas do TUI periodicamente
+                if contador_updates % 20 == 0:  # A cada 20 passos de tempo
                     self._update_tui_metrics()
             
             # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
@@ -180,7 +183,7 @@ class Simulador:
         self._log(f"Pedidos rejeitados: {self.metricas.pedidos_rejeitados}")
         self._log("="*60 + "\n")
         
-        # Final metrics update
+        # Atualizar métricas finais no TUI
         self._update_tui_metrics()
         
         # Gerar relatório de métricas
@@ -189,6 +192,7 @@ class Simulador:
         # Exportar estatísticas
         self._exportar_estatisticas()
         
+        # Finalizar display se necessário
         if self.display:
             self.display.finalizar()
     
@@ -205,8 +209,8 @@ class Simulador:
         
         self.metricas.exportar_csv(csv_ficheiro, config)
         
-        self._log(f"\n✓ Estatísticas exportadas para: {csv_ficheiro}")
-        self._log(f"✓ Log da simulação guardado em: {self.log_ficheiro}")
+        self._log(f"\n Estatísticas exportadas para: {csv_ficheiro}")
+        self._log(f" Log da simulação guardado em: {self.log_ficheiro}")
     
     def _agendar_pedidos(self):
         """Agenda todos os pedidos para chegarem no horário pretendido."""
@@ -221,7 +225,7 @@ class Simulador:
                 dados={'pedido': pedido}
             )
         
-        self._log(f"✓ {len(pedidos_pendentes)} pedidos agendados\n")
+        self._log(f" {len(pedidos_pendentes)} pedidos agendados\n")
     
     def _atualizar_viagens_ativas(self):
         """Atualiza o progresso de todas as viagens em curso."""
@@ -246,17 +250,17 @@ class Simulador:
         """Processa a conclusão de uma viagem."""
         self.ambiente.concluir_pedido(veiculo.pedido_id)
 
-        log_msg = f"[green]✓[/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
+        log_msg = f"[green][/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
-        
-        # Update metrics
+
+        # Atualizar métricas
         self._update_tui_metrics()
 
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
         self._log(f"\n {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
         
-        # 1. Escolher veículo
+        # 1. Escolher e atribuir veículo
         veiculo = self.alocador.escolher_veiculo(
             pedido=pedido,
             veiculos_disponiveis=self.ambiente.listar_veiculos_disponiveis(),
@@ -264,16 +268,19 @@ class Simulador:
         )
         
         if veiculo is None:
-            self._log(f"  [yellow]⚠[/] Nenhum veículo disponível para o pedido #{pedido.id}")
+            self._log(f"  [yellow][/] Nenhum veículo disponível para o pedido #{pedido.id}")
             self.metricas.registar_pedido_rejeitado(pedido.id, "Sem veículos disponíveis")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
             self._update_tui_metrics()
             return
-        
-        self._log(f"  [green]✓[/] Veículo alocado: {veiculo.id_veiculo}")
-        
+
+        self._log(f"  [green][/] Veículo alocado: {veiculo.id_veiculo}")
+        self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
+
         # 2. Calcular rotas
+
+        #TODO: decidir se as localizações são nomes ou IDs
         if isinstance(veiculo.localizacao_atual, str):
             origem_veiculo_nome = veiculo.localizacao_atual
         else:
@@ -310,19 +317,20 @@ class Simulador:
         
         # Rota completa
         rota_completa = rota_ate_cliente + rota_viagem[1:]
-        self._log(f"  [green]✓[/] Rota: {' → '.join(rota_completa)}")
+        self._log(f"  [green][/] Rota: {' → '.join(rota_completa)}")
         
-        # 3. Calcular métricas
-        distancia_ate_cliente = self._calcular_distancia_rota(rota_ate_cliente)
-        distancia_viagem = self._calcular_distancia_rota(rota_viagem)
+        # 3. Calcular dados métricos
+        distancia_ate_cliente = self.ambiente._calcular_distancia_rota(rota_ate_cliente)
+        distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
         distancia_total = distancia_ate_cliente + distancia_viagem
+
+        tempo_ate_cliente = self.ambiente._calcular_tempo_rota(rota_ate_cliente) * 60
+        tempo_viagem = self.ambiente._calcular_tempo_rota(rota_viagem) * 60
         
-        tempo_ate_cliente = self._calcular_tempo_rota(rota_ate_cliente) * 60
-        tempo_viagem = self._calcular_tempo_rota(rota_viagem) * 60
-        
+        #NOTA: rever se devia ser com a distancia total
         custo = distancia_viagem * veiculo.custo_operacional_km
-        emissoes = self._calcular_emissoes(veiculo, distancia_viagem)
-        
+        emissoes = self.ambiente._calcular_emissoes(veiculo, distancia_viagem)
+
         self._log(f"    Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
         self._log(f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
         
@@ -333,10 +341,9 @@ class Simulador:
             self._update_tui_metrics()
             return
         
-        # 5. Iniciar viagem
-
-        self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo, distancia_total)
+        #TODO: adicionar hipotese de ir abastecer pelo caminho e talvez recalcular rota ou ate carro escolhido
         
+        # 5. Iniciar viagem
         veiculo.iniciar_viagem(
             pedido_id=pedido.id,
             rota=rota_completa,
@@ -359,48 +366,8 @@ class Simulador:
 
         self._log(f"  [green][/] Viagem iniciada - ETA: {tempo_ate_cliente + tempo_viagem:.1f} min")
 
-        # Update displays
+        # Atualizar displays
         if self.display:
             self.display.atualizar(pedido, veiculo, rota_completa)
         
         self._update_tui_metrics()
-    
-    def _calcular_distancia_rota(self, rota) -> float:
-        """Calcula a distância total de uma rota."""
-        if len(rota) < 2:
-            return 0.0
-        
-        distancia_total = 0.0
-        for i in range(len(rota) - 1):
-            aresta = self.ambiente.grafo.getEdge(rota[i], rota[i + 1])
-            if aresta:
-                distancia_total += aresta.getQuilometro()
-        
-        return distancia_total
-    
-    def _calcular_tempo_rota(self, rota) -> float:
-        """Calcula o tempo total para percorrer uma rota em horas."""
-        if len(rota) < 2:
-            return 0.0
-        
-        tempo_total_horas = 0.0
-        for i in range(len(rota) - 1):
-            aresta = self.ambiente.grafo.getEdge(rota[i], rota[i + 1])
-            if aresta:
-                tempo_segmento = aresta.getTempoPercorrer()
-                if tempo_segmento is None:
-                    raise ValueError(
-                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
-                    )
-                tempo_total_horas += tempo_segmento
-        
-        return tempo_total_horas
-    
-    def _calcular_emissoes(self, veiculo, distancia: float) -> float:
-        """Calcula as emissões de CO₂ de uma viagem."""
-        from infra.entidades.veiculos import VeiculoEletrico
-        
-        if isinstance(veiculo, VeiculoEletrico):
-            return 0.0
-        else:
-            return distancia * 0.12

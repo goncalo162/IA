@@ -37,6 +37,9 @@ class Evento:
         self.dados_extra = dados_extra or {}
         self.ativo = False
     
+
+#NOTA: ativar e desativar não deveria deveria ter um metodo associado que altera internamente o estado do sistema?
+
     def ativar(self):
         """Ativa o evento."""
         self.ativo = True
@@ -205,6 +208,13 @@ class GestorEventos:
     def obter_eventos_ativos(self):
         """Retorna lista de eventos dinâmicos atualmente ativos."""
         return self.eventos_ativos.copy()
+    
+    # -------------------- Exemplos de criação de eventos --------------------
+
+    #TODO: adicionar mais eventos conforme necessário
+
+    #TODO: ler eventos de ficheiro json
+
     
     def aplicar_evento_transito(self, aresta_nome: str, fator_multiplicador: float):
         """

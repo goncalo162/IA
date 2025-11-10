@@ -139,16 +139,14 @@ class GestaoAmbiente:
         return self._pedidos.pop(pedido_id, None)
 
     # -------------------- Atribuição de Pedidos a Veículos --------------------
-    def atribuir_pedido_a_veiculo(self, pedido: Pedido, veiculo: Veiculo, distancia_total: float) -> bool:
+    def atribuir_pedido_a_veiculo(self, pedido: Pedido, veiculo: Veiculo) -> bool:
         """Atribui um pedido a um veículo já escolhido e atualiza os estados."""
         if pedido is None or veiculo is None:
             return False
 
         pedido.atribuir_a = veiculo.id_veiculo
         pedido.estado = pedido.estado.EM_CURSO
-        veiculo.estado = veiculo.estado.EM_ANDAMENTO
-
-        veiculo.atualizar_autonomia(distancia_total)
+        veiculo.estado = veiculo.estado.EM_ANDAMENTO #talvez aqui meter indisponivel e passar para em adamento em comecar_viagem
 
         return True	
 
@@ -156,13 +154,49 @@ class GestaoAmbiente:
         pedido = self.obter_pedido(pedido_id)
         if pedido is None:
             return False
-        if pedido.atribuir_a is None:
-            pedido.estado = pedido.estado.CONCLUIDO
-            return True
 
         veiculo = self.obter_veiculo(pedido.atribuir_a)
         if veiculo:
             veiculo.concluir_viagem(pedido.destino)
         pedido.estado = pedido.estado.CONCLUIDO
         return True
+
+    # -------------------- Cálculos Auxiliares --------------------
+        
+    def _calcular_distancia_rota(self, rota) -> float:
+        """Calcula a distância total de uma rota."""
+        if len(rota) < 2:
+            return 0.0
+        
+        distancia_total = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.grafo.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                distancia_total += aresta.getQuilometro()
+        
+        return distancia_total
     
+    def _calcular_tempo_rota(self, rota) -> float:
+        """Calcula o tempo total para percorrer uma rota em horas."""
+        if len(rota) < 2:
+            return 0.0
+        
+        tempo_total_horas = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.grafo.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                tempo_segmento = aresta.getTempoPercorrer()
+                if tempo_segmento is None:
+                    raise ValueError(
+                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
+                    )
+                tempo_total_horas += tempo_segmento
+        
+        return tempo_total_horas
+    
+    def _calcular_emissoes(self, veiculo, distancia: float) -> float:
+        """Calcula as emissões de CO₂ de uma viagem."""
+        if isinstance(veiculo, VeiculoEletrico):
+            return 0.0
+        else:
+            return distancia * 0.12
