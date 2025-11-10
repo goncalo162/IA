@@ -8,6 +8,7 @@ from typing import Optional, List
 from infra.entidades.veiculos import Veiculo
 from infra.entidades.pedidos import Pedido
 from infra.grafo.grafo import Grafo
+from algoritmos.criterios import FuncaoCusto, Heuristica, CustoDefault, ZeroHeuristica
 
 
 class AlocadorBase(ABC):
@@ -18,10 +19,18 @@ class AlocadorBase(ABC):
     um pedido específico, considerando critérios como disponibilidade,
     distância, capacidade, autonomia, custo, etc.
     """
-    
+
+    def __init__(self, cost_func: Optional[FuncaoCusto] = None, heuristic: Optional[Heuristica] = None):
+        """Inicializa o alocador com funções opcionais de custo e heurística.
+
+        Essas dependências são opcionais e destinam-se a permitir testar/alterar
+        critérios sem modificar o algoritmo.
+        """
+        self.cost_func: FuncaoCusto = cost_func if cost_func is not None else CustoDefault()
+        self.heuristic: Heuristica = heuristic if heuristic is not None else ZeroHeuristica()
+
     @abstractmethod
-    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo],
-                        grafo: Grafo) -> Optional[Veiculo]:
+    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo) -> Optional[Veiculo]:
         """
         Escolhe o melhor veículo para atender um pedido.
         

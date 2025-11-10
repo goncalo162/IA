@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 
 from infra.grafo.grafo import Grafo
+from algoritmos.criterios import FuncaoCusto, Heuristica, CustoDefault, ZeroHeuristica
 
 
 class NavegadorBase(ABC):
@@ -17,6 +18,15 @@ class NavegadorBase(ABC):
     (BFS, DFS, Dijkstra, A*, etc.).
     """
     
+    def __init__(self, cost_func: Optional[FuncaoCusto] = None, heuristic: Optional[Heuristica] = None):
+        """Inicializa o navegador com funções de custo e heurística opcionais.
+
+        Estas dependências podem ser usadas por implementações (ex.: A*) que
+        queiram consultar estimativas e custos personalizados.
+        """
+        self.cost_func: FuncaoCusto = cost_func if cost_func is not None else CustoDefault()
+        self.heuristic: Heuristica = heuristic if heuristic is not None else ZeroHeuristica()
+
     @abstractmethod
     def calcular_rota(self, grafo: Grafo, origem: str, destino: str) -> Optional[List[str]]:
         """
