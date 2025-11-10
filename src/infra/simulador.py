@@ -280,6 +280,10 @@ class Simulador:
 
         # 2. Calcular rotas
 
+        #NOTA: se calhar se calcularmos a rota da origem do pedido ate ao fim do pedido, e virmos se tem algum posto de abastecimento pelo caminho e onde,
+        # podiamos considerar ir abastecer antes de ir buscar o cliente ou durante a viagem, ou seja, escolher um carro depois de calcular a rota do pedido 
+        #so depois calcular a rota do carro escolhido ate ao inicio do pedido.
+
         #TODO: decidir se as localizações são nomes ou IDs
         if isinstance(veiculo.localizacao_atual, str):
             origem_veiculo_nome = veiculo.localizacao_atual
@@ -334,14 +338,14 @@ class Simulador:
         self._log(f"    Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
         self._log(f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
         
+        #TODO: verificar esta autonomia aquando escolher o veiculo, para nao estar a rejeitar aqui o pedido, sendo que podia ter sido alocado outro carro.
+
         # 4. Verificar autonomia
         if veiculo.autonomia_atual < distancia_total:
             self._log(f"   [red]✗[/] Autonomia insuficiente ({veiculo.autonomia_atual:.1f} < {distancia_total:.1f} km)")
             self.metricas.registar_pedido_rejeitado(pedido.id, "Autonomia insuficiente")
             self._update_tui_metrics()
             return
-        
-        #TODO: adicionar hipotese de ir abastecer pelo caminho e talvez recalcular rota ou ate carro escolhido
         
         # 5. Iniciar viagem
         veiculo.iniciar_viagem(
