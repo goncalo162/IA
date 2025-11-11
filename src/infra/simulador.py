@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import os
 import time
-
+import threading
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
@@ -375,3 +375,35 @@ class Simulador:
             self.display.atualizar(pedido, veiculo, rota_completa)
         
         self._update_tui_metrics()
+
+    def executar_em_thread(self, duracao_horas: float = 8.0):
+        """
+        Executa a simulação numa thread separada, mantendo o display na thread principal.
+        Retorna o objeto Thread para possível controle externo.
+        """
+        thread = threading.Thread(
+            target=self.executar,
+            args=(duracao_horas,),
+            daemon=True
+        )
+        thread.start()
+        return thread
+    
+    import threading
+
+    def iniciar_com_display(self, duracao_horas: float):
+        """
+        Executa a simulação, assumindo que o display (Tkinter) já foi iniciado
+        na main thread. NÃO cria janelas nem o GraphViewer novamente.
+        """
+        print("[Simulador] Iniciando simulação (sem criar display)...")
+    
+        # Lógica principal de simulação
+        tempo_final = self.tempo_inicial + timedelta(hours=duracao_horas)
+        tempo_atual = self.tempo_inicial
+    
+        while tempo_atual < tempo_final:
+            self.executar_ciclo(tempo_atual)
+            tempo_atual += timedelta(seconds=self.frequencia_calculo)
+        
+        print("[Simulador] Simulação concluída.")

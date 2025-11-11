@@ -1,9 +1,10 @@
 import sys
 import os
+import threading
+from datetime import datetime
 
 # Add project root to Python path (so grafos can be imported)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from datetime import datetime
 
 from algoritmos.algoritmos_alocacao import AlocadorSimples
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
@@ -61,7 +62,23 @@ def main():
     )
 
     simulador.carregar_dados(caminho_grafo, caminho_veiculos, caminho_pedidos)
-    simulador.executar(duracao_horas=DURACAO_HORAS_DEFAULT)
+
+    # 🚀 Se o display estiver ativo, o simulador corre numa thread secundária
+    if display is not None:
+        print("[Main] Iniciando simulador em thread separada...")
+        sim_thread = threading.Thread(
+            target=lambda: simulador.iniciar_com_display(duracao_horas=velocidade_display),
+            daemon=True,
+            name="SimuladorThread"
+        )
+        sim_thread.start()
+
+        # O display deve correr na thread principal
+        print("[Main] Iniciando interface gráfica (Tkinter na main thread)...")
+        display.iniciar(simulador.ambiente)
+    else:
+        # Modo sem display: corre tudo na thread principal
+        simulador.iniciar_com_display(duracao_horas=velocidade_display)
 
 
 if __name__ == '__main__':
