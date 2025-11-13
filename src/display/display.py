@@ -11,7 +11,7 @@ from display.aplicacao.graph_viewer import AnimatedGraphApp
 from display.terminal.textual_controller import GraphCarController
 
 
-class DisplayGrafico:
+class DisplayGraficos:
     """
     Launches both the Textual TUI and the graphical Tkinter+Matplotlib viewer.
     They communicate through a shared queue.

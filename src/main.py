@@ -8,10 +8,10 @@ from datetime import datetime
 from algoritmos.algoritmos_alocacao import AlocadorSimples
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
 from infra.simulador import Simulador
-from display.display import DisplayGrafico
+from display.tentativaDisplay import DisplayGrafico
 
 DURACAO_HORAS_DEFAULT = 8.0
-FREQUENCIA_CALCULO_DEFAULT = 10.0
+FREQUENCIA_CALCULO_DEFAULT = 1.0
 FREQUENCIA_DISPLAY_DEFAULT = 10.0
 VELOCIDADE_SIMULACAO_DEFAULT = 1.0
 
@@ -24,6 +24,7 @@ def main():
     caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao = sys.argv[1:5]
     no_display = '--no-display' in sys.argv
 
+# Velocidade de visualização (opcional)
     velocidade_display = VELOCIDADE_SIMULACAO_DEFAULT
     for arg in sys.argv[5:]:
         if arg != '--no-display':
@@ -34,6 +35,7 @@ def main():
 
     if not no_display:
         display = DisplayGrafico(frequencia_display=FREQUENCIA_DISPLAY_DEFAULT)
+        display.set_velocidade_simulacao(velocidade_display)
     else:
         display = None
         print("Modo sem display ativado (execução mais rápida)")
@@ -59,6 +61,9 @@ def main():
         frequencia_calculo=FREQUENCIA_CALCULO_DEFAULT,
         velocidade_simulacao=velocidade_display
     )
+
+    if display is not None:
+        display.set_metricas(simulador.metricas)
 
     simulador.carregar_dados(caminho_grafo, caminho_veiculos, caminho_pedidos)
     simulador.executar(duracao_horas=DURACAO_HORAS_DEFAULT)

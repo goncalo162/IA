@@ -25,6 +25,16 @@ class Grafo:
                 return node
         return None
 
+    ################################
+    # obter ID do nó por nome
+    ################################
+    def getNodeId(self, node_name):
+        """Obtém o ID de um nó pelo seu nome."""
+        for node in self.m_nodes:
+            if node.getName() == node_name:
+                return node.getId()
+        return None
+
     ##############################
     #   imprimir arestas
     ##############################
@@ -137,11 +147,13 @@ class Grafo:
 
         g = Grafo(directed=data.get("directed", False))
 
-        # Criar nós
+        # Criar nós (ler x/y se presentes)
         nodes_map = {}
         for n in data["nodes"]:
             tipo = TipoNodo[n["tipo"]] if isinstance(n["tipo"], str) else TipoNodo(n["tipo"])
-            node = Node(n["name"], id=n.get("id", -1), tipo=tipo)
+            x = n.get("x")
+            y = n.get("y")
+            node = Node(n["name"], id=n.get("id", -1), tipo=tipo, x=x, y=y)
             g.m_nodes.append(node)
             g.m_graph[node.getName()] = []
             nodes_map[node.getName()] = node
