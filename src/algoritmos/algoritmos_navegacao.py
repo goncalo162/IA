@@ -1,6 +1,9 @@
+import heapq
+from typing import Optional, List, Dict
 from collections import deque
 from algoritmos.navegador_base import NavegadorBase
 from infra.grafo.grafo import Grafo
+
 
 #Implementação dos algoritmos de navegação
 
@@ -81,4 +84,126 @@ class NavegadorBFS(NavegadorBase):
     def nome_algoritmo(self) -> str:
         return "BFS (Breadth-First Search)"
 
+#############
+#   *ucs*
+#############
+
+
+class NavegadorCustoUniforme(NavegadorBase):
+    """
+    Implementação do algoritmo Uniform Cost Search (UCS).
+    Usa apenas custos reais das arestas (sem heurística).
+    """
+
+    def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+
+        # Fila de prioridade com tuplos (custo acumulado, nó atual, caminho)
+        fronteira = [(0.0, origem, [origem])]
+        melhor_custo = {origem: 0.0}
+
+        while fronteira:
+            custo_atual, no_atual, caminho = heapq.heappop(fronteira)
+
+            # Se chegámos ao destino, devolvemos o caminho
+            if no_atual == destino:
+                return caminho
+
+            # Garantia de optimalidade: se já vimos este nó com custo menor, ignoramos
+            if custo_atual > melhor_custo.get(no_atual, float("inf")):
+                continue
+
+            # Percorrer todas as arestas que saem do nó atual
+            vizinhos = grafo.getNeighbours(no_atual)
+            if vizinhos is None:
+                continue
+            
+            for aresta in vizinhos:
+
+                no_destino = aresta["destino"]
+
+                if veiculo is None:
+                    custo_aresta = self.funcao_custo.custo_aresta(aresta)
+                else:
+                    custo_aresta = self.funcao_custo.custo_aresta(aresta, veiculo)
+    
+                novo_custo = custo_atual + custo_aresta
+
+                # Só expandimos caminhos melhores
+                if novo_custo < melhor_custo.get(no_destino, float("inf")):
+                    melhor_custo[no_destino] = novo_custo
+                    heapq.heappush(
+                        fronteira,
+                        (novo_custo, no_destino, caminho + [no_destino])
+                    )
+
+        return None  # Sem caminho possível
+    
+
+    def nome_algoritmo(self) -> str:
+        return "Custo Uniforme"
+
+#############
+#   *a star* 
+#############
+
+
+class NavegadorAEstrela(NavegadorBase):
+    """
+    Implementação do algoritmo A* Informed Search.
+    Combina custo acumulado (g) com uma heurística (h)
+    para minimizar f = g + h.
+    """
+
+    def nome_algoritmo(self) -> str:
+        return "A* Informed"
+
+    def calcular_rota(self,grafo: Grafo,origem: str,destino: str,veiculo: Optional[object] = None) -> Optional[List[str]]:
+
+        # Priority queue storing (f(n), g(n), node, path)
+        fronteira = []
         
+        # custo acumulado g(origem) = 0
+        custoAcumulado_inicial = 0.0
+        
+        # f(origem) = g + h
+        custoEstimado_inicial = custoAcumulado_inicial + self.heuristica.estimativa(grafo, origem, destino)
+        
+        heapq.heappush(fronteira, (custoEstimado_inicial, custoAcumulado_inicial, origem, [origem]))
+
+        # Guarda o menor custo já encontrado para cada nó (g(n))
+        melhor_g = {origem: 0.0}
+
+        while fronteira:
+            custoEstimado_atual, custoAcumulado_atual, no_atual, caminho = heapq.heappop(fronteira)
+
+            # Se chegámos ao destino → devolvemos o caminho ótimo
+            if no_atual == destino:
+                return caminho
+
+
+            # Expandir vizinhos
+            for aresta in grafo.getNeighbours(no_atual):
+                no_vizinho = aresta["destino"]
+
+                # custo da aresta (pode depender do veículo)
+                custo_aresta = self.funcao_custo.custo_aresta(aresta, veiculo)
+                custoAcumulado_novo = custoAcumulado_atual + custo_aresta
+
+                # Se este caminho for pior do que outro já encontrado, ignora
+                if custoAcumulado_novo >= melhor_g.get(no_vizinho, float("inf")):
+                    continue
+
+                melhor_g[no_vizinho] = custoAcumulado_novo
+
+                # calcular h(n)
+                heuristica_nova = self.heuristica.estimativa(grafo, no_vizinho, destino)
+
+                # f(n) = g(n) + h(n)
+                custoEstimado_novo = custoAcumulado_novo + heuristica_nova
+
+                heapq.heappush(
+                    fronteira,
+                    (custoEstimado_novo, custoAcumulado_novo, no_vizinho, caminho + [no_vizinho])
+                )
+
+        return None  # Sem caminho

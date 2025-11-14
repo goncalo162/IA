@@ -108,6 +108,11 @@ class Veiculo(ABC):
     def localizacao_atual(self, value):
         """Define a localização atual (pode ser nome do nó ou ID)."""
         self._localizacao_atual = value
+
+    @property
+    def viagem_ativa(self):
+        """Retorna a localização atual (nome do nó ou ID)."""
+        return self.viagem.viagem_ativa if self.viagem else False
     
     def iniciar_viagem(self, pedido_id: int, rota: list, distancia_total: float, tempo_inicio, grafo, velocidade_media: float = 50.0):
         """Inicia uma viagem no veículo criando um objeto Viagem."""
