@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime
 
 from algoritmos.algoritmos_alocacao import AlocadorSimples
-from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorDFS
+from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
 from infra.simulador import Simulador
 from display.tentativaDisplay import DisplayGrafico
 
@@ -42,11 +42,12 @@ def main():
 
     navegadores = {
         "bfs": NavegadorBFS(),
-        "dfs": NavegadorDFS()
+        "dfs": NavegadorDFS(),
+        "ucs": NavegadorCustoUniforme(),
     }
 
     if algoritmo_navegacao not in navegadores:
-        print("Algoritmo inválido. Use 'bfs' ou 'dfs'.")
+        print("Algoritmo inválido. Use 'bfs', 'dfs' ou 'ucs'.")
         sys.exit(1)
 
     navegador = navegadores[algoritmo_navegacao]

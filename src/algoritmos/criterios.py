@@ -5,7 +5,7 @@ Define interfaces simples que os algoritmos podem receber para customizar
 comportamento de custo (por exemplo, custo por km, penalizações) e heurística
 para pesquisas informadas.
 """
-from typing import List
+from typing import List, Optional
 
 class FuncaoCusto:
     """Interface para função de custo.
@@ -16,10 +16,10 @@ class FuncaoCusto:
     """
 
     #TODO: rever isto
-    def custo_rota(self, grafo, rota: List[str], veiculo) -> float:
+    def custo_rota(self, grafo, rota: List[str], veiculo: Optional[object]) -> float:
         raise NotImplementedError()
 
-    def custo_aresta(self, aresta, veiculo) -> float:
+    def custo_aresta(self, aresta, veiculo: Optional[object]) -> float:
         raise NotImplementedError()
 
 
@@ -38,7 +38,7 @@ class CustoDefault(FuncaoCusto):
 
     Usa `aresta.getQuilometro()` quando disponível.
     """
-    def custo_rota(self, grafo, rota: List[str], veiculo) -> float:
+    def custo_rota(self, grafo, rota: List[str], veiculo: Optional[object] = None) -> float:
         distancia = 0.0
         if not rota or len(rota) < 2:
             return 0.0
@@ -51,7 +51,7 @@ class CustoDefault(FuncaoCusto):
                     pass
         return distancia
 
-    def custo_aresta(self, aresta, veiculo) -> float:
+    def custo_aresta(self, aresta, veiculo: Optional[object] = None) -> float:
         try:
             return float(aresta.getQuilometro())
         except Exception:
