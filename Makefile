@@ -88,9 +88,11 @@ format:
 
 # Verificação rápida de erros de sintaxe e linters opcionais
 check:
-	@echo "Executando verificação de sintaxe (compileall) em $(SRC) ..."
-	@python3 -m compileall -q $(SRC) || (echo "Erros de sintaxe encontrados em $(SRC)"; exit 1)
-	@echo "Verificação concluída."
+	@echo "Executando verificação de sintaxe recursiva em src/ ..."
+	@python3 -m compileall -q -f src || \
+		(echo "Erros de sintaxe encontrados em src/"; exit 1)
+	@echo "Verificação concluída sem erros."
+
 
 linter:
 	@echo "Executando linters opcionais (flake8, pylint) se instalados..."
