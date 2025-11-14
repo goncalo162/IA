@@ -1,7 +1,7 @@
 # Makefile para Simulador de Gestão de Frota de Táxis Inteligente
 # Projeto de IA - UMinho 2025
 
-.PHONY: help install run clean test lint format run-1 run-10 run-60 run-turbo run-fast run-ultra
+.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo run-fast run-ultra
 
 # Variáveis
 PYTHON := python
@@ -84,6 +84,19 @@ lint:
 format:
 	@echo "A formatar código com autopep8..."
 	@autopep8 --in-place --aggressive --recursive $(SRC) || echo "autopep8 não instalado. Execute: pip install autopep8"
+
+
+# Verificação rápida de erros de sintaxe e linters opcionais
+check:
+	@echo "Executando verificação de sintaxe (compileall) em $(SRC) ..."
+	@python3 -m compileall -q $(SRC) || (echo "Erros de sintaxe encontrados em $(SRC)"; exit 1)
+	@echo "Verificação concluída."
+
+linter:
+	@echo "Executando linters opcionais (flake8, pylint) se instalados..."
+	@command -v flake8 >/dev/null 2>&1 && flake8 $(SRC) --max-line-length=100 --exclude=venv,__pycache__ || true
+	@command -v pylint >/dev/null 2>&1 && pylint $(SRC) || true
+	@echo "Verificação concluída."
 
 
 # Comandos de execução
