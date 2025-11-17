@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import os
 import time
-
+import threading
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
@@ -339,4 +339,3 @@ class Simulador:
         # Atualizar displays
         if self.display:
             self.display.atualizar(pedido, veiculo, rota_completa)
-
