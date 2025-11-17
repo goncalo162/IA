@@ -1,7 +1,12 @@
 from display.aplicacao.graph_viewer import AnimatedGraphApp
 from display.aplicacao.dashboard_window import DashboardWindow
 
-class DisplayGrafico:
+class DisplayGraficos:
+    """
+    Launches both the Textual TUI and the graphical Tkinter+Matplotlib viewer.
+    They communicate through a shared queue.
+    """
+
     def __init__(self, frequencia_display: float = 10.0):
         import queue
         self.command_queue = queue.Queue()

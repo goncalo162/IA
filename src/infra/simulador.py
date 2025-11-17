@@ -68,14 +68,7 @@ class Simulador:
         # Escrever no ficheiro de log
         with open(self.log_ficheiro, 'a', encoding='utf-8') as f:
             f.write(mensagem + '\n')
-        
-        # Enviar para o display TUI se disponível
-        if self.display and hasattr(self.display, 'command_queue'):
-            # Remove ANSI color codes for file but keep for display
-            self.display.command_queue.put({
-                "type": "log",
-                "message": mensagem
-            })
+ 
     
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str, 
                       caminho_pedidos: str):
@@ -94,18 +87,6 @@ class Simulador:
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
        
-        self._update_tui_metrics() #mandar métricas iniciais para o TUI
-    
-    #TODO: rename simbol nisto para portugues
-    def _update_tui_metrics(self):
-        """Manda métricas atuais para o TUI."""
-        if self.display and hasattr(self.display, 'command_queue'):
-            self.display.command_queue.put({
-                "type": "metrics",
-                "atendidos": self.metricas.pedidos_atendidos,
-                "rejeitados": self.metricas.pedidos_rejeitados,
-                "disponiveis": len(self.ambiente.listar_veiculos_disponiveis())
-            })
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -138,7 +119,6 @@ class Simulador:
         # Loop principal da simulação
         tempo_inicio_real = time.time()
         tempo_decorrido_simulacao = timedelta(0)
-        contador_updates = 0
 
         while self.tempo_simulacao < tempo_final and self.em_execucao:
             # 1. Processar eventos agendados
@@ -150,15 +130,11 @@ class Simulador:
             # 3. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
             
-            # 4. Atualizar displays (gráfico e TUI)
-            contador_updates += 1
-            if contador_updates % 5 == 0:  # Atualizar a cada 5 passos de tempo
-                if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
-                    self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas)
+            # 4. Atualizar display e métricas
+            if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
+                self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas)
 
-                # Atualizar métricas do TUI periodicamente
-                if contador_updates % 20 == 0:  # A cada 20 passos de tempo
-                    self._update_tui_metrics()
+
             
             # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
@@ -169,7 +145,7 @@ class Simulador:
                 
                 if tempo_espera > 0:
                     time.sleep(tempo_espera)
-            
+
             # 6. Avançar tempo
             self.tempo_simulacao += self.passo_tempo
         
@@ -182,9 +158,6 @@ class Simulador:
         self._log(f"Pedidos processados: {self.metricas.pedidos_atendidos}")
         self._log(f"Pedidos rejeitados: {self.metricas.pedidos_rejeitados}")
         self._log("="*60 + "\n")
-        
-        # Atualizar métricas finais no TUI
-        self._update_tui_metrics()
         
         # Gerar relatório de métricas
         self._log(self.metricas.gerar_relatorio())
@@ -253,9 +226,6 @@ class Simulador:
         log_msg = f"[green][/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
 
-        # Atualizar métricas
-        self._update_tui_metrics()
-
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
         self._log(f"\n {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
@@ -272,7 +242,6 @@ class Simulador:
             self.metricas.registar_pedido_rejeitado(pedido.id, "Sem veículos disponíveis")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
-            self._update_tui_metrics()
             return
 
         self._log(f"  [green][/] Veículo alocado: {veiculo.id_veiculo}")
@@ -303,7 +272,6 @@ class Simulador:
         if rota_ate_cliente is None:
             self._log(f"  [red]✗[/] Rota até cliente não encontrada")
             self.metricas.registar_pedido_rejeitado(pedido.id, "Rota até cliente não encontrada")
-            self._update_tui_metrics()
             return
         
         # Rota: Cliente -> Destino
@@ -316,7 +284,6 @@ class Simulador:
         if rota_viagem is None:
             self._log(f"  [red]✗[/] Rota não encontrada")
             self.metricas.registar_pedido_rejeitado(pedido.id, "Rota não encontrada")
-            self._update_tui_metrics()
             return
         
         # Rota completa
@@ -344,7 +311,6 @@ class Simulador:
         if veiculo.autonomia_atual < distancia_total:
             self._log(f"   [red]✗[/] Autonomia insuficiente ({veiculo.autonomia_atual:.1f} < {distancia_total:.1f} km)")
             self.metricas.registar_pedido_rejeitado(pedido.id, "Autonomia insuficiente")
-            self._update_tui_metrics()
             return
         
         # 5. Iniciar viagem
@@ -373,37 +339,3 @@ class Simulador:
         # Atualizar displays
         if self.display:
             self.display.atualizar(pedido, veiculo, rota_completa)
-        
-        self._update_tui_metrics()
-
-    def executar_em_thread(self, duracao_horas: float = 8.0):
-        """
-        Executa a simulação numa thread separada, mantendo o display na thread principal.
-        Retorna o objeto Thread para possível controle externo.
-        """
-        thread = threading.Thread(
-            target=self.executar,
-            args=(duracao_horas,),
-            daemon=True
-        )
-        thread.start()
-        return thread
-    
-    import threading
-
-    def iniciar_com_display(self, duracao_horas: float):
-        """
-        Executa a simulação, assumindo que o display (Tkinter) já foi iniciado
-        na main thread. NÃO cria janelas nem o GraphViewer novamente.
-        """
-        print("[Simulador] Iniciando simulação (sem criar display)...")
-    
-        # Lógica principal de simulação
-        tempo_final = self.tempo_inicial + timedelta(hours=duracao_horas)
-        tempo_atual = self.tempo_inicial
-    
-        while tempo_atual < tempo_final:
-            self.executar_ciclo(tempo_atual)
-            tempo_atual += timedelta(seconds=self.frequencia_calculo)
-        
-        print("[Simulador] Simulação concluída.")

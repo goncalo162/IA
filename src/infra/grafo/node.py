@@ -6,10 +6,13 @@ class TipoNodo(Enum):
     POSTO_CARREGAMENTO = 2
 
 class Node:
-    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL):
+    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL, x: float = None, y: float = None):
         self.m_id = id
         self.m_name = str(name)
         self.m_tipo = tipo
+        # Coordenadas opcionais para visualização
+        self.m_x = float(x) if x is not None else None
+        self.m_y = float(y) if y is not None else None
 
     def __str__(self):
         return "node " + self.m_name
@@ -28,6 +31,12 @@ class Node:
 
     def getTipoNodo(self):
         return self.m_tipo
+
+    def getX(self):
+        return self.m_x
+
+    def getY(self):
+        return self.m_y
 
     def __eq__(self, other):
         if not isinstance(other, Node):
