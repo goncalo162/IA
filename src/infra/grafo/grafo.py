@@ -1,5 +1,6 @@
 import json
 import math
+import random
 from .node import Node, TipoNodo
 from .aresta import Aresta, NivelTransito
 
@@ -72,6 +73,15 @@ class Grafo:
     ##########################
     def getNodes(self):
         return self.m_nodes
+
+    def getRandomNodo(self):
+        nodos = self.m_nodes
+        weights = [n.getAtratividade() for n in nodos]
+
+        if sum(weights) == 0:
+            return random.choice(nodos)
+
+        return random.choices(nodos, weights=weights, k=1)[0]
 
     #######################
     # devolver o custo (tempo) de uma aresta

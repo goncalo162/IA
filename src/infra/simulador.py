@@ -6,7 +6,9 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import os
 import time
+import random
 import threading
+from infra.simuladorDinamico import SimuladorDinamico
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
@@ -31,10 +33,12 @@ class Simulador:
         self.alocador = alocador
         self.navegador = navegador
         self.display = display
-        
+        self.pedidoIdAtual = 0
+
         self.ambiente = GestaoAmbiente()
         self.metricas = Metricas()
         self.gestor_eventos = GestorEventos()
+        self.simuladorDinamico = SimuladorDinamico(0.4, 0.3)
         
         self.tempo_simulacao = tempo_inicial or datetime.now()
         self.velocidade_simulacao = velocidade_simulacao
@@ -86,7 +90,7 @@ class Simulador:
         self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
-       
+        
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -123,19 +127,19 @@ class Simulador:
         while self.tempo_simulacao < tempo_final and self.em_execucao:
             # 1. Processar eventos agendados
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
-            
+            (seChover, seAlgarve) = self.simuladorDinamico.simulacaoDinamica(self.ambiente)
+            self._log(f"[LOG] Choveu: {seChover} Pedido Criado: {seAlgarve}\n")
+
             # 2. Atualizar viagens ativas
             self._atualizar_viagens_ativas()
             
             # 3. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
-            
+
             # 4. Atualizar display e métricas
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(self.tempo_simulacao, self.viagens_ativas)
 
-
-            
             # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
                 tempo_decorrido_simulacao += self.passo_tempo
