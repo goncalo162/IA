@@ -51,7 +51,7 @@ def main():
         sys.exit(1)
 
     navegador = navegadores[algoritmo_navegacao]
-    alocador = AlocadorSimples()
+    alocador = AlocadorSimples(navegador)
 
     tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
     simulador = Simulador(

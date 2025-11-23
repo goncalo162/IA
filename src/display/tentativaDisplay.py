@@ -586,6 +586,7 @@ class DisplayGrafico(DisplayBase):
                 fontfamily='monospace'
             )
     
+    #TODO: rever isto, ver se o que esta deve fazer ou passar o que esta na outra para esta
     def atualizar(self, pedido, veiculo, rota):
         """Atualiza o display com informações de um pedido processado."""
         # Para o display gráfico, a atualização acontece em atualizar_tempo_simulacao
