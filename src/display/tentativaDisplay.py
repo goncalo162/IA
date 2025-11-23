@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import networkx as nx
 from datetime import datetime
-from typing import Dict, Optional, List
-from matplotlib.patches import FancyBboxPatch
+from typing import Optional
 import matplotlib.patches as mpatches
 from infra.grafo.node import TipoNodo
-import scipy as sp
+from infra.entidades.veiculos import VeiculoCombustao
+from display.aplicacao.interacoes import register_interactions
 
 
 """
@@ -181,9 +180,6 @@ class DisplayGrafico(DisplayBase):
         # Configurar axes
         self.ax.set_aspect('equal')
         self.ax.axis('off')
-    # Interactions registration happens below inside a guarded import
-
-
 
         # Criar janela separada para estatísticas
         try:
@@ -197,7 +193,6 @@ class DisplayGrafico(DisplayBase):
         
         # Registrar interações (pan/zoom/drag) usando o module de interações
         try:
-            from display.aplicacao.interacoes import register_interactions
             # register_interactions espera app.canvas e app.ax etc.; our self.canvas is fig.canvas
             register_interactions(self)
         except Exception:
@@ -390,7 +385,6 @@ class DisplayGrafico(DisplayBase):
         
     def _desenhar_veiculos(self):
         """Desenha os veículos nas suas posições atuais (em viagem e parados)."""
-        from infra.entidades.veiculos import VeiculoCombustao
         
         # Obter todos os veículos
         todos_veiculos = self.ambiente.listar_veiculos()

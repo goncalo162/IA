@@ -2,7 +2,7 @@
 Sistema de recolha e análise de métricas da simulação.
 """
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime
 import csv
 import os
 

@@ -2,11 +2,10 @@
 Motor principal da simulação.
 Coordena ambiente, algoritmos, métricas e display.
 """
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from datetime import datetime, timedelta
 import os
 import time
-import threading
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
