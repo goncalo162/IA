@@ -20,25 +20,27 @@ class AlocadorBase(ABC):
     distância, capacidade, autonomia, custo, etc.
     """
 
-    def __init__(self, funcao_custo: Optional[FuncaoCusto] = None, heuristica: Optional[Heuristica] = None):
-        """Inicializa o alocador com funções opcionais de custo e heurística.
+    def __init__(self, navegador, funcao_custo: Optional[FuncaoCusto] = None, heuristica: Optional[Heuristica] = None):
+        """Inicializa o alocador com navegador e funções opcionais de custo/heurística.
 
-        Essas dependências são opcionais e destinam-se a permitir testar/alterar
-        critérios sem modificar o algoritmo.
+        O `navegador` é usado pelos algoritmos de alocação para calcular rotas
+        entre veículo e cliente sem precisar ser passado a cada chamada.
         """
+        self.navegador = navegador
         self.funcao_custo: FuncaoCusto = funcao_custo if funcao_custo is not None else CustoDefault()
         self.heuristica: Heuristica = heuristica if heuristica is not None else ZeroHeuristica()
 
     @abstractmethod
-    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo) -> Optional[Veiculo]:
-        """
-        Escolhe o melhor veículo para atender um pedido.
-        
+    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+        """Escolhe o melhor veículo para atender um pedido.
+
         Args:
-            pedido: O pedido a ser atendido
-            veiculos_disponiveis: Lista de veículos disponíveis
-            grafo: Grafo da cidade para cálculo de distâncias
-        
+            pedido: O pedido a ser atendido.
+            veiculos_disponiveis: Lista de veículos disponíveis.
+            grafo: Grafo da cidade para cálculo de distâncias.
+            rota_pedido: Rota origem->destino do pedido (em nomes de nós).
+            distancia_pedido: Distância total dessa rota.
+
         Returns:
             O veículo escolhido, ou None se nenhum veículo for adequado
         """

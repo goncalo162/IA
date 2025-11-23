@@ -29,6 +29,11 @@ class Veiculo(ABC):
         # Estado de viagem agora é encapsulado na classe Viagem
         self.viagem: Optional[Viagem] = None
 
+        
+        # Dados auxiliares da próxima viagem (rota veículo->cliente)
+        self._rota_ate_cliente: list = []
+        self._distancia_ate_cliente: float = 0.0
+
     @abstractmethod
     def reabastecer(self):
         """Método abstrato — implementado de forma diferente nos veículos a combustão e elétricos"""
@@ -113,13 +118,47 @@ class Veiculo(ABC):
     def viagem_ativa(self):
         """Retorna a localização atual (nome do nó ou ID)."""
         return self.viagem.viagem_ativa if self.viagem else False
+
+    # -------------------- Rota veículo -> cliente (auxiliar de alocação) --------------------
+
+    @property
+    def rota_ate_cliente(self) -> list:
+        return self._rota_ate_cliente
+
+    @rota_ate_cliente.setter
+    def rota_ate_cliente(self, value: list):
+        self._rota_ate_cliente = value or []
+
+    @property
+    def distancia_ate_cliente(self) -> float:
+        return self._distancia_ate_cliente
+
+    @distancia_ate_cliente.setter
+    def distancia_ate_cliente(self, value: float):
+        self._distancia_ate_cliente = float(value) if value is not None else 0.0
     
-    def iniciar_viagem(self, pedido_id: int, rota: list, distancia_total: float, tempo_inicio, grafo, velocidade_media: float = 50.0):
-        """Inicia uma viagem no veículo criando um objeto Viagem."""
-        self.viagem = Viagem(pedido_id=pedido_id, rota=rota, distancia_total=distancia_total,
-                             tempo_inicio=tempo_inicio, grafo=grafo, velocidade_media=velocidade_media)
-        # TODO: este atualiza a autonomia imediatamente, rever para ir atualizando progressivamente durante a viagem, nem que seja de nodo em nodo
-        self.atualizar_autonomia(distancia_total) 
+    def iniciar_viagem(self, pedido_id: int,
+                       rota_ate_cliente: list,
+                       rota_pedido: list,
+                       distancia_ate_cliente: float,
+                       distancia_pedido: float,
+                       tempo_inicio,
+                       grafo,
+                       velocidade_media: float = 50.0):
+        """Inicia uma viagem separando rota até cliente e rota do pedido."""
+        self.viagem = Viagem(
+            pedido_id=pedido_id,
+            rota_ate_cliente=rota_ate_cliente,
+            rota_pedido=rota_pedido,
+            distancia_ate_cliente=distancia_ate_cliente,
+            distancia_pedido=distancia_pedido,
+            tempo_inicio=tempo_inicio,
+            grafo=grafo,
+            velocidade_media=velocidade_media,
+        )
+
+        # Atualizar autonomia com base na distância total prevista da viagem
+        self.atualizar_autonomia(self.viagem.distancia_total)
 
 
     def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:

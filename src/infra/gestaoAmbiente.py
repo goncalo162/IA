@@ -162,37 +162,22 @@ class GestaoAmbiente:
         return True
 
     # -------------------- Cálculos Auxiliares --------------------
-        
+
+    #nota: ver se é necessário ou usamos diretamente do grafo    
     def _calcular_distancia_rota(self, rota) -> float:
-        """Calcula a distância total de uma rota."""
-        if len(rota) < 2:
+        """Wrapper para cálculo de distância delegando no grafo.""" 
+        
+        if not self.grafo:
             return 0.0
-        
-        distancia_total = 0.0
-        for i in range(len(rota) - 1):
-            aresta = self.grafo.getEdge(rota[i], rota[i + 1])
-            if aresta:
-                distancia_total += aresta.getQuilometro()
-        
-        return distancia_total
+        return self.grafo.calcular_distancia_rota(rota)
     
+    #nota: ver se é necessário ou usamos diretamente do grafo
     def _calcular_tempo_rota(self, rota) -> float:
-        """Calcula o tempo total para percorrer uma rota em horas."""
-        if len(rota) < 2:
+        """Wrapper para cálculo de tempo delegando no grafo."""
+        
+        if not self.grafo:
             return 0.0
-        
-        tempo_total_horas = 0.0
-        for i in range(len(rota) - 1):
-            aresta = self.grafo.getEdge(rota[i], rota[i + 1])
-            if aresta:
-                tempo_segmento = aresta.getTempoPercorrer()
-                if tempo_segmento is None:
-                    raise ValueError(
-                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
-                    )
-                tempo_total_horas += tempo_segmento
-        
-        return tempo_total_horas
+        return self.grafo.calcular_tempo_rota(rota)
     
     def _calcular_emissoes(self, veiculo, distancia: float) -> float:
         """Calcula as emissões de CO₂ de uma viagem."""

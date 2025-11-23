@@ -229,17 +229,42 @@ class Simulador:
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
         self._log(f"\n {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
-        
-        # 1. Escolher e atribuir veículo
+
+        # 1. Pré-calcular rota do pedido (origem -> destino)
+        origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
+        destino_nome = self.ambiente.grafo.getNodeName(pedido.destino)
+
+        rota_viagem = self.navegador.calcular_rota(
+            grafo=self.ambiente.grafo,
+            origem=origem_pedido_nome,
+            destino=destino_nome
+        )
+
+        if rota_viagem is None:
+            self._log(f"  [red]✗[/] Rota pedido não encontrada ({origem_pedido_nome} -> {destino_nome})")
+            self.metricas.registar_pedido_rejeitado(pedido.id, "Rota pedido não encontrada")
+            if self.display and hasattr(self.display, 'registrar_rejeicao'):
+                self.display.registrar_rejeicao()
+            return
+
+        distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
+
+        #NOTA: se calhar depois de calcularmos a rota da origem do pedido ate ao fim do pedido, e virmos se tem algum posto de abastecimento pelo caminho e onde,
+        # podiamos considerar ir abastecer antes de ir buscar o cliente ou durante a viagem, ou seja, escolher um carro depois de calcular a rota do pedido 
+        #so depois calcular a rota do carro escolhido ate ao inicio do pedido.
+
+        # 2. Escolher veículo considerando autonomia e rota até cliente
         veiculo = self.alocador.escolher_veiculo(
             pedido=pedido,
             veiculos_disponiveis=self.ambiente.listar_veiculos_disponiveis(),
-            grafo=self.ambiente.grafo
+            grafo=self.ambiente.grafo,
+            rota_pedido=rota_viagem,
+            distancia_pedido=distancia_viagem,
         )
-        
+
         if veiculo is None:
-            self._log(f"  [yellow][/] Nenhum veículo disponível para o pedido #{pedido.id}")
-            self.metricas.registar_pedido_rejeitado(pedido.id, "Sem veículos disponíveis")
+            self._log(f"  [yellow][/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}")
+            self.metricas.registar_pedido_rejeitado(pedido.id, "Sem veículos com autonomia suficiente")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
             return
@@ -247,83 +272,39 @@ class Simulador:
         self._log(f"  [green][/] Veículo alocado: {veiculo.id_veiculo}")
         self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
 
-        # 2. Calcular rotas
-
-        #NOTA: se calhar se calcularmos a rota da origem do pedido ate ao fim do pedido, e virmos se tem algum posto de abastecimento pelo caminho e onde,
-        # podiamos considerar ir abastecer antes de ir buscar o cliente ou durante a viagem, ou seja, escolher um carro depois de calcular a rota do pedido 
-        #so depois calcular a rota do carro escolhido ate ao inicio do pedido.
-
         #TODO: decidir se as localizações são nomes ou IDs
-        if isinstance(veiculo.localizacao_atual, str):
-            origem_veiculo_nome = veiculo.localizacao_atual
-        else:
-            origem_veiculo_nome = self.ambiente.grafo.getNodeName(veiculo.localizacao_atual)
-        
-        origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
-        destino_nome = self.ambiente.grafo.getNodeName(pedido.destino)
-        
-        # Rota: Veículo -> Cliente
-        rota_ate_cliente = self.navegador.calcular_rota(
-            grafo=self.ambiente.grafo,
-            origem=origem_veiculo_nome,
-            destino=origem_pedido_nome
-        )
-        
-        if rota_ate_cliente is None:
-            self._log(f"  [red]✗[/] Rota até cliente não encontrada")
-            self.metricas.registar_pedido_rejeitado(pedido.id, "Rota até cliente não encontrada")
-            return
-        
-        # Rota: Cliente -> Destino
-        rota_viagem = self.navegador.calcular_rota(
-            grafo=self.ambiente.grafo,
-            origem=origem_pedido_nome,
-            destino=destino_nome
-        )
-        
-        if rota_viagem is None:
-            self._log(f"  [red]✗[/] Rota não encontrada")
-            self.metricas.registar_pedido_rejeitado(pedido.id, "Rota não encontrada")
-            return
-        
-        # Rota completa
-        rota_completa = rota_ate_cliente + rota_viagem[1:]
-        self._log(f"  [green][/] Rota: {' → '.join(rota_completa)}")
-        
-        # 3. Calcular dados métricos
-        distancia_ate_cliente = self.ambiente._calcular_distancia_rota(rota_ate_cliente)
-        distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
+
+        # 3. Recuperar rota veículo -> cliente e distância calculadas pelo alocador
+        rota_ate_cliente = veiculo.rota_ate_cliente
+        distancia_ate_cliente = veiculo.distancia_ate_cliente
+
+
         distancia_total = distancia_ate_cliente + distancia_viagem
 
         tempo_ate_cliente = self.ambiente._calcular_tempo_rota(rota_ate_cliente) * 60
         tempo_viagem = self.ambiente._calcular_tempo_rota(rota_viagem) * 60
-        
         #NOTA: rever se devia ser com a distancia total
         custo = distancia_viagem * veiculo.custo_operacional_km
         emissoes = self.ambiente._calcular_emissoes(veiculo, distancia_viagem)
 
+        self._log(f"  [green][/] Rota veículo->cliente: {' → '.join(rota_ate_cliente)}")
+        self._log(f"  [green][/] Rota cliente->destino: {' → '.join(rota_viagem)}")
         self._log(f"    Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
         self._log(f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
-        
-        #TODO: verificar esta autonomia aquando escolher o veiculo, para nao estar a rejeitar aqui o pedido, sendo que podia ter sido alocado outro carro.
 
-        # 4. Verificar autonomia
-        if veiculo.autonomia_atual < distancia_total:
-            self._log(f"   [red]✗[/] Autonomia insuficiente ({veiculo.autonomia_atual:.1f} < {distancia_total:.1f} km)")
-            self.metricas.registar_pedido_rejeitado(pedido.id, "Autonomia insuficiente")
-            return
-        
         # 5. Iniciar viagem
         veiculo.iniciar_viagem(
             pedido_id=pedido.id,
-            rota=rota_completa,
-            distancia_total=distancia_total,
+            rota_ate_cliente=rota_ate_cliente,
+            rota_pedido=rota_viagem,
+            distancia_ate_cliente=distancia_ate_cliente,
+            distancia_pedido=distancia_viagem,
             tempo_inicio=self.tempo_simulacao,
             grafo=self.ambiente.grafo
         )
-        
+
         self.viagens_ativas[veiculo.id_veiculo] = veiculo
-        
+
         # 6. Registar métricas
         self.metricas.registar_pedido_atendido(
             pedido_id=pedido.id,
@@ -338,4 +319,4 @@ class Simulador:
 
         # Atualizar displays
         if self.display:
-            self.display.atualizar(pedido, veiculo, rota_completa)
+            self.display.atualizar(pedido, veiculo, veiculo.viagem.rota)

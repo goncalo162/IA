@@ -137,6 +137,50 @@ class Grafo:
         return None
 
 
+    ################################
+    #  Cálculos auxiliares em rotas
+    ################################
+
+    def calcular_distancia_rota(self, rota) -> float:
+        """Calcula a distância total (km) de uma rota.
+
+        A rota é uma lista de nomes de nós. Para cada par consecutivo,
+        obtém a aresta e soma o quilómetro associado.
+        """
+        if rota is None or len(rota) < 2:
+            return 0.0
+
+        distancia_total = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                distancia_total += aresta.getQuilometro()
+
+        return distancia_total
+
+    def calcular_tempo_rota(self, rota) -> float:
+        """Calcula o tempo total (horas) para percorrer uma rota.
+
+        Usa o tempo de cada aresta (`getTempoPercorrer`). Lança um erro se
+        alguma aresta não tiver informação de tempo.
+        """
+        if rota is None or len(rota) < 2:
+            return 0.0
+
+        tempo_total_horas = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                tempo_segmento = aresta.getTempoPercorrer()
+                if tempo_segmento is None:
+                    raise ValueError(
+                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
+                    )
+                tempo_total_horas += tempo_segmento
+
+        return tempo_total_horas
+
+
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
     ##############################################
