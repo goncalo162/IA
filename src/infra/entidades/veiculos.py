@@ -29,7 +29,6 @@ class Veiculo(ABC):
         # Estado de viagem agora é encapsulado na classe Viagem
         self.viagem: Optional[Viagem] = None
 
-        
         # Dados auxiliares da próxima viagem (rota veículo->cliente)
         self._rota_ate_cliente: list = []
         self._distancia_ate_cliente: float = 0.0
@@ -175,6 +174,9 @@ class Veiculo(ABC):
                 self.viagem.concluir()
                 self.localizacao_atual = destino
                 self.estado = EstadoVeiculo.DISPONIVEL
+                self._numero_passageiros = 0
+                self._rota_ate_cliente = []
+                self._distancia_ate_cliente = 0.0
             finally:
                 self.viagem = None
     

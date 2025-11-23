@@ -48,7 +48,7 @@ class AlocadorBase(ABC):
     
     def _verificar_capacidade(self, veiculo: Veiculo, pedido: Pedido) -> bool:
         """Verifica se o veículo tem capacidade para o número de passageiros."""
-        return veiculo.capacidade_passageiros >= pedido.passageiros
+        return veiculo.capacidade_passageiros >= veiculo.numero_passageiros + pedido.passageiros
     
     def _verificar_autonomia(self, veiculo: Veiculo, distancia: float) -> bool:
         """Verifica se o veículo tem autonomia suficiente."""
