@@ -128,7 +128,11 @@ class Simulador:
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
 
             # 2. Atualizar viagens ativas
-            self._atualizar_viagens_ativas()
+            # Determinar passo atual (evita ultrapassar tempo_final)
+            restante = tempo_final - self.tempo_simulacao
+            passo_atual = self.passo_tempo if self.passo_tempo <= restante else restante
+            tempo_passo_horas = passo_atual.total_seconds() / 3600
+            self._atualizar_viagens_ativas(tempo_passo_horas)
 
             # 3. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
@@ -140,7 +144,7 @@ class Simulador:
 
             # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
-                tempo_decorrido_simulacao += self.passo_tempo
+                tempo_decorrido_simulacao += passo_atual
                 tempo_esperado_real = tempo_decorrido_simulacao.total_seconds() / \
                     self.velocidade_simulacao
                 tempo_decorrido_real = time.time() - tempo_inicio_real
@@ -149,8 +153,8 @@ class Simulador:
                 if tempo_espera > 0:
                     time.sleep(tempo_espera)
 
-            # 6. Avançar tempo
-            self.tempo_simulacao += self.passo_tempo
+            # 6. Avançar tempo (usar passo_atual para evitar overshoot)
+            self.tempo_simulacao += passo_atual
 
         # Finalizar simulação
         self.em_execucao = False
@@ -206,15 +210,22 @@ class Simulador:
 
         self._log(f" {len(pedidos_pendentes)} pedidos agendados\n")
 
-    def _atualizar_viagens_ativas(self):
-        """Atualiza o progresso de todas as viagens em curso."""
+    def _atualizar_viagens_ativas(self, tempo_passo_horas: float = None):
+        """Atualiza o progresso de todas as viagens em curso.
+
+        Args:
+            tempo_passo_horas: tempo simulado decorrido neste passo, em horas.
+                Se None, usa `self.passo_tempo` para calcular.
+        """
         if not self.viagens_ativas:
             return
 
-        tempo_passo_horas = self.passo_tempo.total_seconds() / 3600
+        if tempo_passo_horas is None:
+            tempo_passo_horas = self.passo_tempo.total_seconds() / 3600
+
         viagens_concluidas = []
 
-        for veiculo_id, veiculo in self.viagens_ativas.items():
+        for veiculo_id, veiculo in list(self.viagens_ativas.items()):
             concluiu = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
 
             if concluiu:
