@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class NivelTransito(Enum):
     VAZIO = 0.5
     NORMAL = 1
@@ -7,8 +8,9 @@ class NivelTransito(Enum):
     MUITO_ELEVADO = 2
     ACIDENTE = -1
 
+
 class Aresta:
-    def __init__(self, quilometro: int, velocidadeMaxima: float, nome: str, transito:NivelTransito = NivelTransito.NORMAL):     #  construtor do nodo....."
+    def __init__(self, quilometro: int, velocidadeMaxima: float, nome: str, transito: NivelTransito = NivelTransito.NORMAL):  # construtor do nodo....."
         self.m_quilometro = quilometro
         self.m_velocidadeMaxima = velocidadeMaxima
         self.m_nivelTransito = transito
@@ -20,7 +22,7 @@ class Aresta:
     def __repr__(self):
         return "node " + self.m_name
 
-    def setNivelTransito(self, transito:NivelTransito):
+    def setNivelTransito(self, transito: NivelTransito):
         self.m_nivelTransito = transito
 
     def getQuilometro(self):
@@ -31,18 +33,19 @@ class Aresta:
 
     def getVelocidadeMaxima(self):
         return self.m_velocidadeMaxima
-    
+
     def getTransito(self):
         return self.m_nivelTransito
 
     def getTempoPercorrer(self):
-        if(self.m_nivelTransito == NivelTransito.ACIDENTE):
+        if (self.m_nivelTransito == NivelTransito.ACIDENTE):
             return None
         else:
             return (self.m_quilometro / self.m_velocidadeMaxima) * self.m_nivelTransito.value
 
     def __eq__(self, other):
-        return self.m_name == other.m_name and self.m_nivelTransito == other.m_nivelTransito # ver se é preciso tb testar o id....
+        # ver se é preciso tb testar o id....
+        return self.m_name == other.m_name and self.m_nivelTransito == other.m_nivelTransito
 
     def __hash__(self):
         return hash(self.m_name)

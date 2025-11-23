@@ -14,7 +14,7 @@ from algoritmos.criterios import FuncaoCusto, Heuristica, CustoDefault, ZeroHeur
 class AlocadorBase(ABC):
     """
     Classe abstrata que define a interface para algoritmos de alocação.
-    
+
     Um alocador é responsável por escolher qual veículo deve atender
     um pedido específico, considerando critérios como disponibilidade,
     distância, capacidade, autonomia, custo, etc.
@@ -45,11 +45,11 @@ class AlocadorBase(ABC):
             O veículo escolhido, ou None se nenhum veículo for adequado
         """
         pass
-    
+
     def _verificar_capacidade(self, veiculo: Veiculo, pedido: Pedido) -> bool:
         """Verifica se o veículo tem capacidade para o número de passageiros."""
         return veiculo.capacidade_passageiros >= veiculo.numero_passageiros + pedido.passageiros
-    
+
     def _verificar_autonomia(self, veiculo: Veiculo, distancia: float) -> bool:
         """Verifica se o veículo tem autonomia suficiente."""
         return veiculo.autonomia_atual >= distancia

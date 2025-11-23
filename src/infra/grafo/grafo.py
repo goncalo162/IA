@@ -136,7 +136,6 @@ class Grafo:
                 return aresta
         return None
 
-
     ################################
     #  Cálculos auxiliares em rotas
     ################################
@@ -180,10 +179,10 @@ class Grafo:
 
         return tempo_total_horas
 
-
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
     ##############################################
+
     @staticmethod
     def from_json_file(filepath: str):
         with open(filepath, "r", encoding="utf-8") as f:
@@ -194,7 +193,8 @@ class Grafo:
         # Criar nós (ler x/y se presentes)
         nodes_map = {}
         for n in data["nodes"]:
-            tipo = TipoNodo[n["tipo"]] if isinstance(n["tipo"], str) else TipoNodo(n["tipo"])
+            tipo = TipoNodo[n["tipo"]] if isinstance(
+                n["tipo"], str) else TipoNodo(n["tipo"])
             x = n.get("x")
             y = n.get("y")
             node = Node(n["name"], id=n.get("id", -1), tipo=tipo, x=x, y=y)
@@ -207,7 +207,8 @@ class Grafo:
             src = e["source"]
             dst = e["target"]
             transito_value = e.get("transito", "NORMAL")
-            transito = NivelTransito[transito_value] if isinstance(transito_value, str) else NivelTransito(transito_value)
+            transito = NivelTransito[transito_value] if isinstance(
+                transito_value, str) else NivelTransito(transito_value)
 
             aresta = Aresta(
                 quilometro=e["quilometro"],

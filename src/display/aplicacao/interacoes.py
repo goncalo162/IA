@@ -7,8 +7,10 @@ def register_interactions(app):
         app._ylim_start = None
 
     app.canvas.mpl_connect("scroll_event", lambda e: _on_scroll(app, e))
-    app.canvas.mpl_connect("button_press_event", lambda e: _on_button_press(app, e))
-    app.canvas.mpl_connect("button_release_event", lambda e: _on_button_release(app, e))
+    app.canvas.mpl_connect("button_press_event",
+                           lambda e: _on_button_press(app, e))
+    app.canvas.mpl_connect("button_release_event",
+                           lambda e: _on_button_release(app, e))
     app.canvas.mpl_connect("motion_notify_event", lambda e: _on_motion(app, e))
 
 
@@ -69,8 +71,10 @@ def _on_scroll(app, event):
     cur_ylim = app.ax.get_ylim()
     new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
     new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
-    relx = (cur_xlim[1] - xdata) / (cur_xlim[1] - cur_xlim[0]) if cur_xlim[1] != cur_xlim[0] else 0.5
-    rely = (cur_ylim[1] - ydata) / (cur_ylim[1] - cur_ylim[0]) if cur_ylim[1] != cur_ylim[0] else 0.5
+    relx = (cur_xlim[1] - xdata) / (cur_xlim[1] - cur_xlim[0]
+                                    ) if cur_xlim[1] != cur_xlim[0] else 0.5
+    rely = (cur_ylim[1] - ydata) / (cur_ylim[1] - cur_ylim[0]
+                                    ) if cur_ylim[1] != cur_ylim[0] else 0.5
     new_xmin = xdata - (1 - relx) * new_width
     new_xmax = xdata + (relx) * new_width
     new_ymin = ydata - (1 - rely) * new_height

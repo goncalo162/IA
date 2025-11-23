@@ -1,14 +1,14 @@
+from display.tentativaDisplay import DisplayGrafico
+from infra.simulador import Simulador
+from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
+from algoritmos.algoritmos_alocacao import AlocadorSimples
+from datetime import datetime
 import sys
 import os
 
 # Add project root to Python path (so grafos can be imported)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from datetime import datetime
 
-from algoritmos.algoritmos_alocacao import AlocadorSimples
-from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
-from infra.simulador import Simulador
-from display.tentativaDisplay import DisplayGrafico
 
 DURACAO_HORAS_DEFAULT = 8.0
 FREQUENCIA_CALCULO_DEFAULT = 1.0
@@ -18,7 +18,8 @@ VELOCIDADE_SIMULACAO_DEFAULT = 1.0
 
 def main():
     if len(sys.argv) < 5:
-        print("Uso: python src/main.py <grafo.json> <veiculos.json> <pedidos.json> <algoritmo> [velocidade] [--no-display]")
+        print(
+            "Uso: python src/main.py <grafo.json> <veiculos.json> <pedidos.json> <algoritmo> [velocidade] [--no-display]")
         sys.exit(1)
 
     caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao = sys.argv[1:5]

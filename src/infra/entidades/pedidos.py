@@ -82,4 +82,3 @@ class Pedido:
         if not isinstance(value, EstadoPedido):
             raise ValueError("estado deve ser um EstadoPedido")
         self._estado = value
-
