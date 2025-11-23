@@ -61,7 +61,8 @@ pip install \
     networkx \
     textual \
     pillow \
-    numpy
+    numpy \
+    scipy
 
 echo
 echo -e "${GREEN}Todos os ficheiros foram instalados com sucesso.${RESET}"
