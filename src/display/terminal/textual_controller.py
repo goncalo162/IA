@@ -1,7 +1,7 @@
 # display/terminal/textual_controller.py
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static, DataTable
-from textual.containers import Container, Vertical, Horizontal
+from textual.containers import Container, Vertical
 from textual.reactive import reactive
 from datetime import datetime
 
@@ -141,10 +141,11 @@ class GraphCarController(App):
             if pedido and veiculo:
                 origem = rota[0] if len(rota) > 0 else "?"
                 destino = rota[-1] if len(rota) > 0 else "?"
-                self.add_log(
-                    f"[green]✓[/] Viagem iniciada: Veículo {veiculo.id_veiculo} "
-                    f"→ Pedido #{pedido.id} ({origem} → {destino})"
+                log_msg = (
+                    f"[green]✓[/] Viagem iniciada: Veículo {veiculo.id_veiculo} - "
+                    f"Pedido #{pedido.id} ({origem} → {destino})"
                 )
+                self.add_log(log_msg)
         
         elif msg_type == "reject":
             self.pedidos_rejeitados += 1

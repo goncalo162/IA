@@ -48,8 +48,9 @@ class AlocadorSimples(AlocadorBase):
                 continue
 
             # Distância veículo -> cliente baseada nos quilómetros das arestas
-            distancia_ate_cliente = grafo.calcular_distancia_rota(rota_ate_cliente)
-            
+            distancia_ate_cliente = grafo.calcular_distancia_rota(
+                rota_ate_cliente)
+
             if distancia_ate_cliente is None:
                 continue
 
@@ -64,4 +65,3 @@ class AlocadorSimples(AlocadorBase):
             return v  # simples: primeiro veículo viável
 
         return None
-

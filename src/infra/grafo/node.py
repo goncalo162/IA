@@ -1,9 +1,11 @@
 from enum import Enum
 
+
 class TipoNodo(Enum):
     LOCAL = 0
     BOMBA_GASOLINA = 1
     POSTO_CARREGAMENTO = 2
+
 
 class Node:
     def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL, x: float = None, y: float = None):

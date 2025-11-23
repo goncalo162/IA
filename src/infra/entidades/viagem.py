@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 
 class Viagem:
@@ -19,7 +19,8 @@ class Viagem:
 
         # Rota completa = concatenação (sem repetir nó do cliente)
         if self.rota_ate_cliente:
-            self.rota = self.rota_ate_cliente + (self.rota_pedido[1:] if self.rota_pedido else [])
+            self.rota = self.rota_ate_cliente + \
+                (self.rota_pedido[1:] if self.rota_pedido else [])
         else:
             self.rota = list(self.rota_pedido)
 
@@ -45,8 +46,10 @@ class Viagem:
                 velocidade = aresta.getVelocidadeMaxima()
                 transito = aresta.getTransito()
 
-                tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
-                fator_transito = transito.value if getattr(transito, 'value', None) is not None else 1.0
+                tempo_base_horas = distancia / \
+                    velocidade if velocidade > 0 else distancia / velocidade_media
+                fator_transito = transito.value if getattr(
+                    transito, 'value', None) is not None else 1.0
                 tempo_horas = tempo_base_horas * fator_transito
 
                 self.segmentos.append({
@@ -73,7 +76,6 @@ class Viagem:
         """
         if not self._viagem_ativa or not self.segmentos:
             return False
-        
 
         tempo_restante = tempo_decorrido_horas
 
@@ -83,7 +85,8 @@ class Viagem:
             tempo_segmento = segmento['tempo_horas']
 
             distancia_restante_segmento = distancia_segmento - self.distancia_no_segmento
-            tempo_para_concluir_segmento = (distancia_restante_segmento / distancia_segmento) * tempo_segmento
+            tempo_para_concluir_segmento = (
+                distancia_restante_segmento / distancia_segmento) * tempo_segmento
 
             if tempo_restante >= tempo_para_concluir_segmento:
                 self.distancia_percorrida += distancia_restante_segmento
@@ -91,7 +94,8 @@ class Viagem:
                 self.indice_segmento_atual += 1
                 tempo_restante -= tempo_para_concluir_segmento
             else:
-                velocidade_efetiva = distancia_segmento / tempo_segmento if tempo_segmento > 0 else 0
+                velocidade_efetiva = distancia_segmento / \
+                    tempo_segmento if tempo_segmento > 0 else 0
                 distancia_avancada = velocidade_efetiva * tempo_restante
                 self.distancia_no_segmento += distancia_avancada
                 self.distancia_percorrida += distancia_avancada
@@ -126,6 +130,7 @@ class Viagem:
         if not self._viagem_ativa or self.distancia_total == 0:
             return 0.0
         return min(100.0, (self.distancia_percorrida / self.distancia_total) * 100.0)
+
     @property
     def destino(self):
         return self.rota[-1] if self.rota else None

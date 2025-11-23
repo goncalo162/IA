@@ -4,18 +4,21 @@ from typing import Optional
 
 from infra.entidades.viagem import Viagem
 
-#NOTA: enum sus, depois vejam os estados melhor
+# NOTA: enum sus, depois vejam os estados melhor
+
+
 class EstadoVeiculo(Enum):
     DISPONIVEL = 1
     EM_ANDAMENTO = 2
-    INDISPONIVEL = 3 
+    INDISPONIVEL = 3
     EM_REABASTECIMENTO = 4
     EM_MANUTENCAO = 5
+
 
 class Veiculo(ABC):
     def __init__(self, id_veiculo: int, autonomia_maxima: int, autonomia_atual: int,
                  capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
-                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual = 0):
+                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual=0):
         # atributos protegidos (encapsulados) — aceder via propriedades
         self._id_veiculo = id_veiculo
         self._autonomia_maxima = autonomia_maxima
@@ -24,12 +27,12 @@ class Veiculo(ABC):
         self._numero_passageiros = numero_passageiros
         self._custo_operacional_km = custo_operacional_km
         self._estado = estado
-        self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
-        
+        # ID ou nome do nó onde o veículo está
+        self._localizacao_atual = localizacao_atual
+
         # Estado de viagem agora é encapsulado na classe Viagem
         self.viagem: Optional[Viagem] = None
 
-        
         # Dados auxiliares da próxima viagem (rota veículo->cliente)
         self._rota_ate_cliente: list = []
         self._distancia_ate_cliente: float = 0.0
@@ -56,7 +59,8 @@ class Veiculo(ABC):
 
     def atualizar_autonomia(self, km_percorridos: int):
         """Reduz a autonomia atual de acordo com a distância percorrida"""
-        self.autonomia_atual = max(0, self.autonomia_atual - km_percorridos) # Evita autonomia negativa
+        self.autonomia_atual = max(
+            0, self.autonomia_atual - km_percorridos)  # Evita autonomia negativa
 
     def __str__(self):
         return (f"{self.__class__.__name__} [{self.id_veiculo}] | "
@@ -77,7 +81,7 @@ class Veiculo(ABC):
     @property
     def autonomia_atual(self) -> int:
         return self._autonomia_atual
-    
+
     @autonomia_atual.setter
     def autonomia_atual(self, value: int):
         self._autonomia_atual = max(0, value)
@@ -103,12 +107,12 @@ class Veiculo(ABC):
     @property
     def numero_passageiros(self) -> int:
         return self._numero_passageiros
-    
+
     @property
     def localizacao_atual(self):
         """Retorna a localização atual (nome do nó ou ID)."""
         return self._localizacao_atual
-    
+
     @localizacao_atual.setter
     def localizacao_atual(self, value):
         """Define a localização atual (pode ser nome do nó ou ID)."""
@@ -135,8 +139,9 @@ class Veiculo(ABC):
 
     @distancia_ate_cliente.setter
     def distancia_ate_cliente(self, value: float):
-        self._distancia_ate_cliente = float(value) if value is not None else 0.0
-    
+        self._distancia_ate_cliente = float(
+            value) if value is not None else 0.0
+
     def iniciar_viagem(self, pedido_id: int,
                        rota_ate_cliente: list,
                        rota_pedido: list,
@@ -160,14 +165,12 @@ class Veiculo(ABC):
         # Atualizar autonomia com base na distância total prevista da viagem
         self.atualizar_autonomia(self.viagem.distancia_total)
 
-
     def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
         """Delega atualização de progresso para Viagem. Retorna True se viagem for concluída."""
         if not self.viagem:
             return False
         return self.viagem.atualizar_progresso(tempo_decorrido_horas)
-   
-    
+
     def concluir_viagem(self, destino):
         """Finaliza a viagem (delegado para Viagem e limpa a referência)."""
         if self.viagem:
@@ -175,16 +178,19 @@ class Veiculo(ABC):
                 self.viagem.concluir()
                 self.localizacao_atual = destino
                 self.estado = EstadoVeiculo.DISPONIVEL
+                self._numero_passageiros = 0
+                self._rota_ate_cliente = []
+                self._distancia_ate_cliente = 0.0
             finally:
                 self.viagem = None
-    
+
     @property
     def progresso_percentual(self) -> float:
         """Retorna o progresso da viagem em percentual (0-100)."""
         if not self.viagem:
             return 0.0
         return self.viagem.progresso_percentual
-    
+
     @property
     def destino(self) -> str:
         """Retorna o destino final da rota."""
@@ -196,9 +202,11 @@ class Veiculo(ABC):
 
 # -------------------- Veículo a Combustão ---------------- #
 
+
 class VeiculoCombustao(Veiculo):
     def __init__(self, id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                 custo_operacional_km, numero_passageiros=0, localizacao_atual=0): #meter custo litro por kilometro se for preciso
+                 # meter custo litro por kilometro se for preciso
+                 custo_operacional_km, numero_passageiros=0, localizacao_atual=0):
         super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
                          numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
 
@@ -216,9 +224,9 @@ class VeiculoEletrico(Veiculo):
         # tempo médio para carga de um km (armazenado em campo protegido)
         self._tempo_recarga_km = tempo_recarga_km
 
-
     def tempoReabastecimento(self):
-        tempo = self.tempo_recarga_km * (self.autonomia_maxima - self.autonomia_atual)
+        tempo = self.tempo_recarga_km * \
+            (self.autonomia_maxima - self.autonomia_atual)
         return tempo
 
     @property
@@ -227,12 +235,3 @@ class VeiculoEletrico(Veiculo):
 
 
 # -------------------- Propriedades (getters/setters) --------------------
-
-
-    
-
-
-
-
-
-
