@@ -1,7 +1,7 @@
 from display.tentativaDisplay import DisplayGrafico
 from infra.simulador import Simulador
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
-from algoritmos.algoritmos_alocacao import AlocadorSimples
+from algoritmos.algoritmos_alocacao import AlocadorHeuristico
 from datetime import datetime
 import sys
 import os
@@ -52,7 +52,7 @@ def main():
         sys.exit(1)
 
     navegador = navegadores[algoritmo_navegacao]
-    alocador = AlocadorSimples(navegador)
+    alocador = AlocadorHeuristico(navegador)
 
     tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
     simulador = Simulador(
