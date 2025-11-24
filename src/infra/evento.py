@@ -63,7 +63,8 @@ class EventoTemporal:
     """
 
     def __init__(self, tempo: datetime, tipo: TipoEvento,
-                 callback: Callable, dados: Optional[dict] = None):
+                 callback: Callable, dados: Optional[dict] = None,
+                 prioridade: int = 0):
         """
         Args:
             tempo: Momento em que o evento deve ocorrer
@@ -75,6 +76,8 @@ class EventoTemporal:
         self.tipo = tipo
         self.callback = callback
         self.dados = dados or {}
+        # Prioridade do evento (maior valor == maior prioridade)
+        self.prioridade = int(prioridade)
 
     def executar(self):
         """Executa o callback do evento."""
@@ -100,21 +103,23 @@ class FilaEventos:
 
     def adicionar(self, evento: EventoTemporal):
         """Adiciona um evento à fila."""
-        # Usar contador para desempate (mantém ordem de inserção)
-        heapq.heappush(self._fila, (evento.tempo, self._contador, evento))
+        # Usar tupla (tempo, -prioridade, contador, evento) para garantir que
+        # quando tempos forem iguais, eventos com maior prioridade sejam
+        # processados primeiro. O contador garante ordem estável em desempates.
+        heapq.heappush(self._fila, (evento.tempo, -evento.prioridade, self._contador, evento))
         self._contador += 1
 
     def proximo(self) -> Optional[EventoTemporal]:
         """Remove e retorna o próximo evento (mais cedo)."""
         if self._fila:
-            _, _, evento = heapq.heappop(self._fila)
+            _, _, _, evento = heapq.heappop(self._fila)
             return evento
         return None
 
     def espiar_proximo(self) -> Optional[EventoTemporal]:
         """Retorna o próximo evento sem removê-lo."""
         if self._fila:
-            return self._fila[0][2]
+            return self._fila[0][3]
         return None
 
     def tem_eventos(self) -> bool:
@@ -147,7 +152,8 @@ class GestorEventos:
         self.eventos.append(evento)
 
     def agendar_evento(self, tempo: datetime, tipo: TipoEvento,
-                       callback: Callable, dados: Optional[dict] = None):
+                       callback: Callable, dados: Optional[dict] = None,
+                       prioridade: int = 0):
         """
         Agenda um evento temporal para execução futura.
 
@@ -157,7 +163,7 @@ class GestorEventos:
             callback: Função a ser chamada
             dados: Dados para passar ao callback
         """
-        evento = EventoTemporal(tempo, tipo, callback, dados)
+        evento = EventoTemporal(tempo, tipo, callback, dados, prioridade=prioridade)
         self.fila_temporal.adicionar(evento)
         return evento
 
