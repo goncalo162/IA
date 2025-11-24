@@ -17,6 +17,12 @@ SPEED := 1.0
 ALGO_BFS := bfs
 ALGO_DFS := dfs
 
+# Algoritmos de alocação disponíveis
+ALGO_HEURISTICO := Heuristico
+ALGO_SIMPLES := simples
+
+# Algoritmo de alocação padrão
+ALGO_ALOC := Heuristico
 
 help:
 	@echo "======================================================================"
@@ -103,26 +109,26 @@ linter:
 
 # Comandos de execução
 run:
-	@echo "A executar simulação com $(ALGO) a velocidade $(SPEED)x..."
-	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(SPEED)
+	@echo "A executar simulação com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade $(SPEED)x..."
+	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) $(SPEED)
 
 run-1:
-	@echo "A executar simulação com $(ALGO) a velocidade 1x (tempo real)..."
-	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) 1.0
+	@echo "A executar simulação com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 1x (tempo real)..."
+	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 1.0
 
 run-10:
-	@echo "A executar simulação com $(ALGO) a velocidade 10x..."
-	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) 10.0
+	@echo "A executar simulação com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 10x..."
+	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 10.0
 
 run-60:
-	@echo "A executar simulação com $(ALGO) a velocidade 60x..."
-	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) 60.0
+	@echo "A executar simulação com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 60x..."
+	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 60.0
 
 run-turbo:
-	@echo "A executar simulação SEM DISPLAY com $(ALGO) a velocidade 500x (muito rápido)..."
-	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) 500.0 --no-display
+	@echo "A executar simulação SEM DISPLAY com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 500x (muito rápido)..."
+	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 500.0 --no-display
 
-	
+
 
 
 
