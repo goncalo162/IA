@@ -80,5 +80,26 @@
       "preferencia_ambiental": 0,
       "estado": "PENDENTE"
     }
+,
+    {
+      "pedido_id": 10,
+      "origem": 1,
+      "destino": 0,
+      "passageiros": 1,
+      "horario_pretendido": "2025-01-01T08:05:00",
+      "prioridade": 1,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    },
+    {
+      "pedido_id": 9,
+      "origem": 0,
+      "destino": 1,
+      "passageiros": 2,
+      "horario_pretendido": "2025-01-01T08:05:00",
+      "prioridade": 5,
+      "preferencia_ambiental": 0,
+      "estado": "PENDENTE"
+    }
   ]
 }

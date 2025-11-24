@@ -162,14 +162,25 @@ class Veiculo(ABC):
             velocidade_media=velocidade_media,
         )
 
-        # Atualizar autonomia com base na distância total prevista da viagem
-        self.atualizar_autonomia(self.viagem.distancia_total)
-
     def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
         """Delega atualização de progresso para Viagem. Retorna True se viagem for concluída."""
         if not self.viagem:
             return False
-        return self.viagem.atualizar_progresso(tempo_decorrido_horas)
+
+        # Guardar distância percorrida antes de atualizar para calcular o delta
+        distancia_antes = self.viagem.distancia_percorrida
+
+        viagem_concluida = self.viagem.atualizar_progresso(tempo_decorrido_horas)
+
+        # Distância efetivamente percorrida neste passo
+        distancia_depois = self.viagem.distancia_percorrida
+        distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+
+        # Atualizar autonomia com base na distância avançada neste passo
+        if distancia_avancada > 0:
+            self.atualizar_autonomia(distancia_avancada)
+
+        return viagem_concluida
 
     def concluir_viagem(self, destino):
         """Finaliza a viagem (delegado para Viagem e limpa a referência)."""

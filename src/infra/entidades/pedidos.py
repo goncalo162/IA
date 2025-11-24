@@ -15,7 +15,7 @@ class Pedido:
     """
 
     def __init__(self, pedido_id: int, origem: int, destino: int, passageiros: int,
-                 horario_pretendido: datetime, prioridade: int = 1,
+                 horario_pretendido: datetime, prioridade: int = 0,
                  preferencia_ambiental: int = 0):
 
         self._id = pedido_id
@@ -23,7 +23,7 @@ class Pedido:
         self._destino = destino
         self._passageiros = passageiros
         self._horario_pretendido = horario_pretendido
-        self._prioridade = prioridade
+        self._prioridade = prioridade # Maior valor = maior prioridade (0 a 5)
         self._preferencia_ambiental = preferencia_ambiental
         self._estado: EstadoPedido = EstadoPedido.PENDENTE
         self._atribuir_a: Optional[int] = None
