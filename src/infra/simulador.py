@@ -127,22 +127,36 @@ class Simulador:
             # 1. Processar eventos agendados
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
 
-            # 2. Atualizar viagens ativas
-            # Determinar passo atual (evita ultrapassar tempo_final)
+            # 2. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
             restante = tempo_final - self.tempo_simulacao
             passo_atual = self.passo_tempo if self.passo_tempo <= restante else restante
-            tempo_passo_horas = passo_atual.total_seconds() / 3600
+
+            # Se houver um próximo evento antes do fim deste passo, reduzir o passo
+            # para que não passemos por cima do instante do evento (o evento será
+            # processado na próxima iteração, que começa com processar_eventos_ate).
+            try:
+                proximo_evento = self.gestor_eventos.fila_temporal.espiar_proximo()
+                if proximo_evento is not None and proximo_evento.tempo > self.tempo_simulacao:
+                    delta_para_evento = proximo_evento.tempo - self.tempo_simulacao
+                    if delta_para_evento < passo_atual:
+                        passo_atual = delta_para_evento
+            except Exception:
+                pass
+
+            # 3. Calcular e aplicar efeitos do passo (atualizar progresso das viagens)
+            tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
             self._atualizar_viagens_ativas(tempo_passo_horas)
 
-            # 3. Atualizar eventos dinâmicos
+
+            # 4. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
-            # 4. Atualizar display e métricas
+            # 5. Atualizar display e métricas
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(
                     self.tempo_simulacao, self.viagens_ativas)
 
-            # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
+            # 6. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
                 tempo_decorrido_simulacao += passo_atual
                 tempo_esperado_real = tempo_decorrido_simulacao.total_seconds() / \
@@ -153,8 +167,9 @@ class Simulador:
                 if tempo_espera > 0:
                     time.sleep(tempo_espera)
 
-            # 6. Avançar tempo (usar passo_atual para evitar overshoot)
+            # 7. Finalmente, avançar o relógio de simulação (usar passo_atual)
             self.tempo_simulacao += passo_atual
+            
 
         # Finalizar simulação
         self.em_execucao = False
@@ -205,7 +220,8 @@ class Simulador:
                 tempo=pedido.horario_pretendido,
                 tipo=TipoEvento.CHEGADA_PEDIDO,
                 callback=self._processar_pedido,
-                dados={'pedido': pedido}
+                dados={'pedido': pedido},
+                prioridade=pedido.prioridade
             )
 
         self._log(f" {len(pedidos_pendentes)} pedidos agendados\n")
@@ -245,8 +261,9 @@ class Simulador:
 
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
+        horario_log = self.tempo_simulacao.strftime('%H:%M:%S')
         self._log(
-            f"\n {self.tempo_simulacao.strftime('%H:%M:%S')} - [cyan]Processando Pedido #{pedido.id}[/]")
+            f"\n {horario_log} - [cyan]Processando Pedido #{pedido.id}[/]")
 
         # 1. Pré-calcular rota do pedido (origem -> destino)
         origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
