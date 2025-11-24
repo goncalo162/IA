@@ -1,7 +1,8 @@
 from display.tentativaDisplay import DisplayGrafico
 from infra.simulador import Simulador
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
-from algoritmos.algoritmos_alocacao import AlocadorSimples
+from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples
+
 from datetime import datetime
 import sys
 import os
@@ -22,7 +23,7 @@ def main():
             "Uso: python src/main.py <grafo.json> <veiculos.json> <pedidos.json> <algoritmo> [velocidade] [--no-display]")
         sys.exit(1)
 
-    caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao = sys.argv[1:5]
+    caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao, algoritmo_alocacao = sys.argv[1:6]
     no_display = '--no-display' in sys.argv
 
 # Velocidade de visualização (opcional)
@@ -52,11 +53,22 @@ def main():
         sys.exit(1)
 
     navegador = navegadores[algoritmo_navegacao]
-    alocador = AlocadorSimples(navegador)
+    
+    alocadores = {
+        "Heuristico": AlocadorHeuristico(navegador),
+        "simples": AlocadorSimples(navegador),
+    }
+
+
+    if algoritmo_alocacao not in alocadores:
+        print("Algoritmo inválido. Use 'heuristico', 'simples'.")
+        sys.exit(1)
+
+    alocador = alocadores[algoritmo_alocacao]
 
     tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
     simulador = Simulador(
-        alocador=alocador,
+        alocador= alocador,
         navegador=navegador,
         display=display,
         tempo_inicial=tempo_inicial,
