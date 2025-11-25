@@ -1,5 +1,9 @@
+import queue
+
 from display.aplicacao.graph_viewer import AnimatedGraphApp
 from display.aplicacao.dashboard_window import DashboardWindow
+
+
 
 class DisplayGraficos:
     """
@@ -8,7 +12,7 @@ class DisplayGraficos:
     """
 
     def __init__(self, frequencia_display: float = 10.0):
-        import queue
+
         self.command_queue = queue.Queue()
         self.frequencia_display = frequencia_display
         self.viewer_app = None

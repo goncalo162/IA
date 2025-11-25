@@ -146,10 +146,53 @@ class Grafo:
                 return aresta
         return None
 
+    ################################
+    #  Cálculos auxiliares em rotas
+    ################################
+
+    def calcular_distancia_rota(self, rota) -> float:
+        """Calcula a distância total (km) de uma rota.
+
+        A rota é uma lista de nomes de nós. Para cada par consecutivo,
+        obtém a aresta e soma o quilómetro associado.
+        """
+        if rota is None or len(rota) < 2:
+            return 0.0
+
+        distancia_total = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                distancia_total += aresta.getQuilometro()
+
+        return distancia_total
+
+    def calcular_tempo_rota(self, rota) -> float:
+        """Calcula o tempo total (horas) para percorrer uma rota.
+
+        Usa o tempo de cada aresta (`getTempoPercorrer`). Lança um erro se
+        alguma aresta não tiver informação de tempo.
+        """
+        if rota is None or len(rota) < 2:
+            return 0.0
+
+        tempo_total_horas = 0.0
+        for i in range(len(rota) - 1):
+            aresta = self.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                tempo_segmento = aresta.getTempoPercorrer()
+                if tempo_segmento is None:
+                    raise ValueError(
+                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
+                    )
+                tempo_total_horas += tempo_segmento
+
+        return tempo_total_horas
 
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
     ##############################################
+
     @staticmethod
     def from_json_file(filepath: str):
         with open(filepath, "r", encoding="utf-8") as f:
@@ -160,7 +203,8 @@ class Grafo:
         # Criar nós (ler x/y se presentes)
         nodes_map = {}
         for n in data["nodes"]:
-            tipo = TipoNodo[n["tipo"]] if isinstance(n["tipo"], str) else TipoNodo(n["tipo"])
+            tipo = TipoNodo[n["tipo"]] if isinstance(
+                n["tipo"], str) else TipoNodo(n["tipo"])
             x = n.get("x")
             y = n.get("y")
             node = Node(n["name"], id=n.get("id", -1), tipo=tipo, x=x, y=y)
@@ -173,7 +217,8 @@ class Grafo:
             src = e["source"]
             dst = e["target"]
             transito_value = e.get("transito", "NORMAL")
-            transito = NivelTransito[transito_value] if isinstance(transito_value, str) else NivelTransito(transito_value)
+            transito = NivelTransito[transito_value] if isinstance(
+                transito_value, str) else NivelTransito(transito_value)
 
             aresta = Aresta(
                 quilometro=e["quilometro"],

@@ -7,6 +7,7 @@ para pesquisas informadas.
 """
 from typing import List, Optional
 
+
 class FuncaoCusto:
     """Interface para função de custo.
 
@@ -15,7 +16,7 @@ class FuncaoCusto:
     devolve o custo de uma aresta individual.
     """
 
-    #TODO: rever isto
+    # TODO: rever isto
     def custo_rota(self, grafo, rota: List[str], veiculo: Optional[object]) -> float:
         raise NotImplementedError()
 
@@ -29,6 +30,7 @@ class Heuristica:
     Implementações devem fornecer `estimativa(grafo, origem, destino)` que
     devolve uma estimativa (lower-bound) do custo entre dois nós.
     """
+
     def estimativa(self, grafo, origem: str, destino: str) -> float:
         raise NotImplementedError()
 
@@ -38,6 +40,7 @@ class CustoDefault(FuncaoCusto):
 
     Usa `aresta.getQuilometro()` quando disponível.
     """
+
     def custo_rota(self, grafo, rota: List[str], veiculo: Optional[object] = None) -> float:
         distancia = 0.0
         if not rota or len(rota) < 2:
@@ -60,5 +63,6 @@ class CustoDefault(FuncaoCusto):
 
 class ZeroHeuristica(Heuristica):
     """Heurística neutra (retorna zero)."""
+
     def estimativa(self, grafo, origem: str, destino: str) -> float:
         return 0.0

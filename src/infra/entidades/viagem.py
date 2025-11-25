@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 
 class Viagem:
@@ -8,22 +8,37 @@ class Viagem:
     para separar responsabilidades (single responsibility).
     """
 
-    def __init__(self, pedido_id: int, rota: List, distancia_total: float, tempo_inicio, grafo, velocidade_media: float = 50.0):
+    def __init__(self, pedido_id: int, rota_ate_cliente: List, rota_pedido: List,
+                 distancia_ate_cliente: float, distancia_pedido: float,
+                 tempo_inicio, grafo, velocidade_media: float = 50.0):
         self.pedido_id = pedido_id
-        self.rota = rota
-        self.distancia_total = distancia_total
+
+        # Rota separada em dois segmentos: veículo->cliente e cliente->destino
+        self.rota_ate_cliente = rota_ate_cliente or []
+        self.rota_pedido = rota_pedido or []
+
+        # Rota completa = concatenação (sem repetir nó do cliente)
+        if self.rota_ate_cliente:
+            self.rota = self.rota_ate_cliente + \
+                (self.rota_pedido[1:] if self.rota_pedido else [])
+        else:
+            self.rota = list(self.rota_pedido)
+
+        self.distancia_ate_cliente = float(distancia_ate_cliente)
+        self.distancia_pedido = float(distancia_pedido)
+        self.distancia_total = self.distancia_ate_cliente + self.distancia_pedido
         self.distancia_percorrida = 0.0
         self.tempo_inicio = tempo_inicio
         self.indice_segmento_atual = 0
         self.distancia_no_segmento = 0.0
         self.segmentos = []
-    # Flag interna que indica se a viagem está ativa
+        # Flag interna que indica se a viagem está ativa
         self._viagem_ativa = True
 
-        # Pré-calcular informações dos segmentos
-        for i in range(len(rota) - 1):
-            origem = rota[i]
-            destino = rota[i + 1]
+        # Pré-calcular informações dos segmentos ao longo da rota completa
+        for i in range(len(self.rota) - 1):
+            origem = self.rota[i]
+            destino = self.rota[i + 1]
             aresta = grafo.getEdge(origem, destino)
 
             if aresta:
@@ -31,8 +46,10 @@ class Viagem:
                 velocidade = aresta.getVelocidadeMaxima()
                 transito = aresta.getTransito()
 
-                tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
-                fator_transito = transito.value if getattr(transito, 'value', None) is not None else 1.0
+                tempo_base_horas = distancia / \
+                    velocidade if velocidade > 0 else distancia / velocidade_media
+                fator_transito = transito.value if getattr(
+                    transito, 'value', None) is not None else 1.0
                 tempo_horas = tempo_base_horas * fator_transito
 
                 self.segmentos.append({
@@ -59,7 +76,6 @@ class Viagem:
         """
         if not self._viagem_ativa or not self.segmentos:
             return False
-        
 
         tempo_restante = tempo_decorrido_horas
 
@@ -69,7 +85,8 @@ class Viagem:
             tempo_segmento = segmento['tempo_horas']
 
             distancia_restante_segmento = distancia_segmento - self.distancia_no_segmento
-            tempo_para_concluir_segmento = (distancia_restante_segmento / distancia_segmento) * tempo_segmento
+            tempo_para_concluir_segmento = (
+                distancia_restante_segmento / distancia_segmento) * tempo_segmento
 
             if tempo_restante >= tempo_para_concluir_segmento:
                 self.distancia_percorrida += distancia_restante_segmento
@@ -77,7 +94,8 @@ class Viagem:
                 self.indice_segmento_atual += 1
                 tempo_restante -= tempo_para_concluir_segmento
             else:
-                velocidade_efetiva = distancia_segmento / tempo_segmento if tempo_segmento > 0 else 0
+                velocidade_efetiva = distancia_segmento / \
+                    tempo_segmento if tempo_segmento > 0 else 0
                 distancia_avancada = velocidade_efetiva * tempo_restante
                 self.distancia_no_segmento += distancia_avancada
                 self.distancia_percorrida += distancia_avancada
@@ -95,7 +113,11 @@ class Viagem:
     # marcar internamente como concluída e limpar dados
         self._viagem_ativa = False
         self.rota = []
+        self.rota_ate_cliente = []
+        self.rota_pedido = []
         self.distancia_total = 0.0
+        self.distancia_ate_cliente = 0.0
+        self.distancia_pedido = 0.0
         self.distancia_percorrida = 0.0
         self.tempo_inicio = None
         self.segmentos = []
@@ -108,6 +130,7 @@ class Viagem:
         if not self._viagem_ativa or self.distancia_total == 0:
             return 0.0
         return min(100.0, (self.distancia_percorrida / self.distancia_total) * 100.0)
+
     @property
     def destino(self):
         return self.rota[-1] if self.rota else None

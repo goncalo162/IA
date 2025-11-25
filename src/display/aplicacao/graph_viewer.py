@@ -7,8 +7,8 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.animation import FuncAnimation
-from matplotlib.patches import Circle
 from datetime import datetime
+import traceback
 
 from display.aplicacao.layout_utils import compute_layout
 from display.aplicacao.desenhar import draw_graph, update_graph_drawing
@@ -140,5 +140,5 @@ class AnimatedGraphApp:
             self.root.mainloop()
         except Exception as e:
             print(f"[GraphViewer] mainloop exited with error: {e}")
-            import traceback
+
             traceback.print_exc()

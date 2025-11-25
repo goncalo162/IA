@@ -7,7 +7,8 @@ from typing import Optional, Any, Callable
 from datetime import datetime
 import heapq
 
-#TODO: rever estes eventos e adicionar os que sejam necessários
+# TODO: rever estes eventos e adicionar os que sejam necessários
+
 
 class TipoEvento(Enum):
     """Tipos de eventos que podem ocorrer na simulação."""
@@ -27,27 +28,28 @@ class Evento:
     """
     Representa um evento dinâmico na simulação.
     """
-    
-    def __init__(self, tipo: TipoEvento, timestamp: datetime, 
-                 duracao_minutos: Optional[float] = None, 
+
+    def __init__(self, tipo: TipoEvento, timestamp: datetime,
+                 duracao_minutos: Optional[float] = None,
                  dados_extra: Optional[dict] = None):
         self.tipo = tipo
         self.timestamp = timestamp
         self.duracao_minutos = duracao_minutos
         self.dados_extra = dados_extra or {}
         self.ativo = False
-    
 
-#NOTA: ativar e desativar não deveria deveria ter um metodo associado que altera internamente o estado do sistema?
+
+# NOTA: ativar e desativar não deveria deveria ter um metodo associado que altera internamente o estado do sistema?
+
 
     def ativar(self):
         """Ativa o evento."""
         self.ativo = True
-    
+
     def desativar(self):
         """Desativa o evento."""
         self.ativo = False
-    
+
     def __str__(self) -> str:
         estado = "ATIVO" if self.ativo else "INATIVO"
         return (f"Evento {self.tipo.name} [{estado}] às {self.timestamp} "
@@ -59,9 +61,10 @@ class EventoTemporal:
     Evento temporal para a fila de eventos da simulação.
     Usa heap queue para ordenação eficiente por tempo.
     """
-    
-    def __init__(self, tempo: datetime, tipo: TipoEvento, 
-                 callback: Callable, dados: Optional[dict] = None):
+
+    def __init__(self, tempo: datetime, tipo: TipoEvento,
+                 callback: Callable, dados: Optional[dict] = None,
+                 prioridade: int = 0):
         """
         Args:
             tempo: Momento em que o evento deve ocorrer
@@ -73,15 +76,17 @@ class EventoTemporal:
         self.tipo = tipo
         self.callback = callback
         self.dados = dados or {}
-    
+        # Prioridade do evento (maior valor == maior prioridade)
+        self.prioridade = int(prioridade)
+
     def executar(self):
         """Executa o callback do evento."""
         return self.callback(**self.dados)
-    
+
     def __lt__(self, other):
         """Permite ordenar eventos por tempo na heap."""
         return self.tempo < other.tempo
-    
+
     def __str__(self) -> str:
         return f"EventoTemporal[{self.tipo.name} @ {self.tempo.strftime('%H:%M:%S')}]"
 
@@ -91,39 +96,41 @@ class FilaEventos:
     Fila de prioridade para eventos temporais.
     Eventos são ordenados por tempo de ocorrência.
     """
-    
+
     def __init__(self):
         self._fila = []
         self._contador = 0  # Para desempate quando tempos são iguais
-    
+
     def adicionar(self, evento: EventoTemporal):
         """Adiciona um evento à fila."""
-        # Usar contador para desempate (mantém ordem de inserção)
-        heapq.heappush(self._fila, (evento.tempo, self._contador, evento))
+        # Usar tupla (tempo, -prioridade, contador, evento) para garantir que
+        # quando tempos forem iguais, eventos com maior prioridade sejam
+        # processados primeiro. O contador garante ordem estável em desempates.
+        heapq.heappush(self._fila, (evento.tempo, -evento.prioridade, self._contador, evento))
         self._contador += 1
-    
+
     def proximo(self) -> Optional[EventoTemporal]:
         """Remove e retorna o próximo evento (mais cedo)."""
         if self._fila:
-            _, _, evento = heapq.heappop(self._fila)
+            _, _, _, evento = heapq.heappop(self._fila)
             return evento
         return None
-    
+
     def espiar_proximo(self) -> Optional[EventoTemporal]:
         """Retorna o próximo evento sem removê-lo."""
         if self._fila:
-            return self._fila[0][2]
+            return self._fila[0][3]
         return None
-    
+
     def tem_eventos(self) -> bool:
         """Verifica se há eventos na fila."""
         return len(self._fila) > 0
-    
+
     def limpar(self):
         """Remove todos os eventos da fila."""
         self._fila.clear()
         self._contador = 0
-    
+
     def tamanho(self) -> int:
         """Retorna o número de eventos na fila."""
         return len(self._fila)
@@ -134,43 +141,44 @@ class GestorEventos:
     Classe responsável por gerir eventos durante a simulação.
     Inclui tanto eventos dinâmicos (trânsito, falhas) quanto eventos temporais.
     """
-    
+
     def __init__(self):
         self.eventos = []
         self.eventos_ativos = []
         self.fila_temporal = FilaEventos()
-    
+
     def adicionar_evento(self, evento: Evento):
         """Adiciona um novo evento dinâmico ao sistema."""
         self.eventos.append(evento)
-    
-    def agendar_evento(self, tempo: datetime, tipo: TipoEvento, 
-                      callback: Callable, dados: Optional[dict] = None):
+
+    def agendar_evento(self, tempo: datetime, tipo: TipoEvento,
+                       callback: Callable, dados: Optional[dict] = None,
+                       prioridade: int = 0):
         """
         Agenda um evento temporal para execução futura.
-        
+
         Args:
             tempo: Momento em que o evento deve ocorrer
             tipo: Tipo do evento
             callback: Função a ser chamada
             dados: Dados para passar ao callback
         """
-        evento = EventoTemporal(tempo, tipo, callback, dados)
+        evento = EventoTemporal(tempo, tipo, callback, dados, prioridade=prioridade)
         self.fila_temporal.adicionar(evento)
         return evento
-    
+
     def processar_eventos_ate(self, tempo_atual: datetime):
         """
         Processa todos os eventos temporais até o tempo especificado.
-        
+
         Args:
             tempo_atual: Tempo limite para processar eventos
-            
+
         Returns:
             Lista de eventos processados
         """
         eventos_processados = []
-        
+
         while self.fila_temporal.tem_eventos():
             proximo = self.fila_temporal.espiar_proximo()
             if proximo and proximo.tempo <= tempo_atual:
@@ -182,9 +190,9 @@ class GestorEventos:
                     print(f"Erro ao executar evento {evento}: {e}")
             else:
                 break
-        
+
         return eventos_processados
-    
+
     def atualizar(self, tempo_atual: datetime):
         """
         Atualiza o estado dos eventos dinâmicos baseado no tempo atual.
@@ -195,7 +203,7 @@ class GestorEventos:
             if not evento.ativo and tempo_atual >= evento.timestamp:
                 evento.ativar()
                 self.eventos_ativos.append(evento)
-            
+
             # Verificar se evento deve ser desativado
             if evento.ativo and evento.duracao_minutos:
                 tempo_fim = evento.timestamp
@@ -204,18 +212,17 @@ class GestorEventos:
                     evento.desativar()
                     if evento in self.eventos_ativos:
                         self.eventos_ativos.remove(evento)
-    
+
     def obter_eventos_ativos(self):
         """Retorna lista de eventos dinâmicos atualmente ativos."""
         return self.eventos_ativos.copy()
-    
+
     # -------------------- Exemplos de criação de eventos --------------------
 
-    #TODO: adicionar mais eventos conforme necessário
+    # TODO: adicionar mais eventos conforme necessário
 
-    #TODO: ler eventos de ficheiro json
+    # TODO: ler eventos de ficheiro json
 
-    
     def aplicar_evento_transito(self, aresta_nome: str, fator_multiplicador: float):
         """
         Cria um evento de alteração de trânsito numa aresta específica.
