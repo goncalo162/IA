@@ -123,10 +123,10 @@ class GestaoAmbiente:
         self._pedidos[pedido.id] = pedido
 
     def arranjaId_pedido(self):
-        res = self._pedidos.keys(-1) + 1
-        while(res in self._pedidos.keys):
-            res += 1
-        return res
+        """Gera um novo ID único para um pedido."""
+        if not self._pedidos:
+            return 1
+        return max(self._pedidos.keys()) + 1
 
     def obter_pedido(self, id_pedido: int) -> Optional[Pedido]:
         """Obtém um pedido pelo ID."""

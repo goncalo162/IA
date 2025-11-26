@@ -97,6 +97,20 @@
     {"source": "Celeirós", "target": "Complexo de Piscinas Braga", "quilometro": 3.1, "velocidadeMaxima": 70, "nome": "Rua das Piscinas", "transito": "NORMAL"},
     {"source": "Complexo de Piscinas Braga", "target": "Centro Comercial Nova Arcada", "quilometro": 2.9, "velocidadeMaxima": 60, "nome": "Rua Nova Arcada", "transito": "ELEVADO"},
     {"source": "Centro Comercial Nova Arcada", "target": "Monte d’Arcos", "quilometro": 1.3, "velocidadeMaxima": 50, "nome": "Rua Monte Arcos", "transito": "NORMAL"},
-    {"source": "Monte d’Arcos", "target": "Sé de Braga", "quilometro": 2.5, "velocidadeMaxima": 40, "nome": "Rua Arcebispo", "transito": "ELEVADO"}
+    {"source": "Monte d’Arcos", "target": "Sé de Braga", "quilometro": 2.5, "velocidadeMaxima": 40, "nome": "Rua Arcebispo", "transito": "ELEVADO"},
+    {"source": "Avenida Central", "target": "Estação de Comboios", "quilometro": 1.8, "velocidadeMaxima": 40, "nome": "Av. Central-Estação", "transito": "NORMAL"},
+    {"source": "Maximinos", "target": "Avenida Central", "quilometro": 1.5, "velocidadeMaxima": 40, "nome": "Rua Maximinos", "transito": "NORMAL"},
+    {"source": "Nogueiró", "target": "Avenida João XXI", "quilometro": 2.0, "velocidadeMaxima": 50, "nome": "Rua Nogueiró", "transito": "NORMAL"},
+    {"source": "Tenões", "target": "Frossos", "quilometro": 2.3, "velocidadeMaxima": 50, "nome": "Rua Tenões-Frossos", "transito": "NORMAL"},
+    {"source": "Dume", "target": "Real", "quilometro": 3.5, "velocidadeMaxima": 60, "nome": "Estrada Dume-Real", "transito": "NORMAL"},
+    {"source": "Merelim São Pedro", "target": "Ferreiros", "quilometro": 2.8, "velocidadeMaxima": 60, "nome": "EN205", "transito": "NORMAL"},
+    {"source": "Priscos", "target": "Complexo de Piscinas Braga", "quilometro": 3.2, "velocidadeMaxima": 60, "nome": "Rua Priscos", "transito": "NORMAL"},
+    {"source": "Tadim", "target": "Nogueiró", "quilometro": 2.5, "velocidadeMaxima": 50, "nome": "Rua Tadim", "transito": "NORMAL"},
+    {"source": "Padim da Graça", "target": "Gualtar", "quilometro": 2.8, "velocidadeMaxima": 50, "nome": "Rua Padim", "transito": "NORMAL"},
+    {"source": "Esporões", "target": "Tenões", "quilometro": 3.1, "velocidadeMaxima": 50, "nome": "Rua Esporões", "transito": "NORMAL"},
+    {"source": "Parque da Ponte", "target": "Sé de Braga", "quilometro": 0.8, "velocidadeMaxima": 30, "nome": "Rua da Ponte", "transito": "NORMAL"},
+    {"source": "Rua do Souto", "target": "Sé de Braga", "quilometro": 0.3, "velocidadeMaxima": 20, "nome": "Rua do Souto", "transito": "ELEVADO"},
+    {"source": "Cividade", "target": "Rua do Souto", "quilometro": 0.4, "velocidadeMaxima": 25, "nome": "Rua Cividade", "transito": "NORMAL"},
+    {"source": "Avenida Imaculada Conceição", "target": "Hospital de Braga", "quilometro": 1.9, "velocidadeMaxima": 50, "nome": "Av. Imaculada", "transito": "NORMAL"}
   ]
 }

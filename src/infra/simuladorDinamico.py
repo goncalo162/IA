@@ -13,23 +13,35 @@ class SimuladorDinamico:
         self.m_chanceTrocaTempo = chanceTrocaTempo
         self.m_chancePedidoAleatorio = chancePedidoAleatorio
 
-    def gerarPedido(self, ambiente:GestaoAmbiente):
-        (inicio,fim) = ambiente.getRandomNodePair()
-        return Pedido(ambiente.arranjaId_pedido, inicio, fim, )
-    
-    def simulacaoDinamica(self, ambiente:GestaoAmbiente):
-        chuvaMudou = False
-        gerouPedido = False
+    def gerarPedido(self, ambiente: GestaoAmbiente, curTime):
+        (inicio, fim) = ambiente.getRandomNodePair()
+        inicio_id = inicio.getId()
+        fim_id = fim.getId()
 
-        if(random.randrange(0, 1000, 1) <= self.m_chanceTrocaTempo * 200):
-            if(self.m_chover == False):
+        return Pedido(
+            pedido_id=ambiente.arranjaId_pedido(),
+            origem=inicio_id,
+            destino=fim_id,
+            passageiros=1,
+            horario_pretendido=curTime,
+            prioridade=0
+        )
+    
+    def simulacaoDinamica(self, ambiente, curTime):
+        chuvaMudou = False
+        novo_pedido = None
+    
+        if random.random() <= self.m_chanceTrocaTempo:
+            chuvaMudou = True
+            if not self.m_chover:
                 self.m_chover = True
                 self.m_chancePedidoAleatorio *= 2
             else:
                 self.m_chover = False
                 self.m_chancePedidoAleatorio /= 2
-
-        if(random.randrange(0, 1000, 1) <= self.m_chancePedidoAleatorio * 200):
-            ambiente.adicionar_pedido(self.gerarPedido(ambiente))
-
-        return(chuvaMudou, gerouPedido)
+    
+        if random.random() <= self.m_chancePedidoAleatorio:
+            novo_pedido = self.gerarPedido(ambiente, curTime)
+            ambiente.adicionar_pedido(novo_pedido)
+    
+        return chuvaMudou, novo_pedido

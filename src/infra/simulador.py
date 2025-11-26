@@ -92,7 +92,6 @@ class Simulador:
         self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
-        
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -130,23 +129,54 @@ class Simulador:
         tempo_decorrido_simulacao = timedelta(0)
 
         while self.tempo_simulacao < tempo_final and self.em_execucao:
-            # 1. Processar eventos agendados
-            self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
-            (seChover, seAlgarve) = self.simuladorDinamico.simulacaoDinamica(self.ambiente)
-            self._log(f"[LOG] Choveu: {seChover} Pedido Criado: {seAlgarve}\n")
+            # 1. Processar eventos agendados e adicionar eventos novos ne necessário
+            chuveu, novo_pedido = self.simuladorDinamico.simulacaoDinamica(self.ambiente, self.tempo_simulacao)
+            if(chuveu == True):
+                self._log("[DIN]Trocou de tempo")
+                
+            if novo_pedido:
+                self._log(f"[DIN] Pedido dinâmico gerado #{novo_pedido.id}")
 
-            # 2. Atualizar viagens ativas
-            self._atualizar_viagens_ativas()
-            
-            # 3. Atualizar eventos dinâmicos
+                self.gestor_eventos.agendar_evento(
+                    tempo=self.tempo_simulacao,
+                    tipo=TipoEvento.CHEGADA_PEDIDO,
+                    callback=self._processar_pedido,
+                    dados={'pedido': novo_pedido},
+                    prioridade=novo_pedido.prioridade
+                )
+    
+            self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
+
+            # 2. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
+            restante = tempo_final - self.tempo_simulacao
+            passo_atual = self.passo_tempo if self.passo_tempo <= restante else restante
+
+            # Se houver um próximo evento antes do fim deste passo, reduzir o passo
+            # para que não passemos por cima do instante do evento (o evento será
+            # processado na próxima iteração, que começa com processar_eventos_ate).
+            try:
+                proximo_evento = self.gestor_eventos.fila_temporal.espiar_proximo()
+                if proximo_evento is not None and proximo_evento.tempo > self.tempo_simulacao:
+                    delta_para_evento = proximo_evento.tempo - self.tempo_simulacao
+                    if delta_para_evento < passo_atual:
+                        passo_atual = delta_para_evento
+            except Exception:
+                pass
+
+            # 3. Calcular e aplicar efeitos do passo (atualizar progresso das viagens)
+            tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
+            self._atualizar_viagens_ativas(tempo_passo_horas)
+
+
+            # 4. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
-            # 4. Atualizar display e métricas
+            # 5. Atualizar display e métricas
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(
                     self.tempo_simulacao, self.viagens_ativas)
 
-            # 5. Sincronizar com tempo real (apenas para velocidades moderadas)
+            # 6. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
                 tempo_decorrido_simulacao += passo_atual
                 tempo_esperado_real = tempo_decorrido_simulacao.total_seconds() / \
@@ -254,11 +284,10 @@ class Simulador:
         horario_log = self.tempo_simulacao.strftime('%H:%M:%S')
         self._log(
             f"\n {horario_log} - [cyan]Processando Pedido #{pedido.id}[/]")
-
+  
         # 1. Pré-calcular rota do pedido (origem -> destino)
         origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
         destino_nome = self.ambiente.grafo.getNodeName(pedido.destino)
-
         rota_viagem = self.navegador.calcular_rota(
             grafo=self.ambiente.grafo,
             origem=origem_pedido_nome,
@@ -309,9 +338,9 @@ class Simulador:
 
         distancia_total = distancia_ate_cliente + distancia_viagem
 
-        tempo_ate_cliente = self.ambiente._calcular_tempo_rota(
-            rota_ate_cliente) * 60
+        tempo_ate_cliente = self.ambiente._calcular_tempo_rota(rota_ate_cliente) * 60
         tempo_viagem = self.ambiente._calcular_tempo_rota(rota_viagem) * 60
+
         # NOTA: rever se devia ser com a distancia total
         custo = distancia_viagem * veiculo.custo_operacional_km
         emissoes = self.ambiente._calcular_emissoes(veiculo, distancia_viagem)
