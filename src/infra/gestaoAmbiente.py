@@ -4,6 +4,7 @@ Contém o grafo da cidade, frota de veículos e pedidos.
 """
 
 import json
+import random
 from typing import Dict, List, Optional
 from datetime import datetime
 
@@ -121,6 +122,12 @@ class GestaoAmbiente:
         """Adiciona um pedido."""
         self._pedidos[pedido.id] = pedido
 
+    def arranjaId_pedido(self):
+        """Gera um novo ID único para um pedido."""
+        if not self._pedidos:
+            return 1
+        return max(self._pedidos.keys()) + 1
+
     def obter_pedido(self, id_pedido: int) -> Optional[Pedido]:
         """Obtém um pedido pelo ID."""
         return self._pedidos.get(id_pedido)
@@ -186,3 +193,15 @@ class GestaoAmbiente:
             return 0.0
         else:
             return distancia * 0.12
+        
+    def getRandomNodePair(self):
+        inicio = self.grafo.getRandomNodo()
+        inicio_nome = inicio.getName()
+
+        vizinhos = [v for (v, _) in self.grafo.getNeighbours(inicio_nome)]
+
+        fim = self.grafo.getRandomNodo()
+        while fim.getName() in vizinhos:
+            fim = self.grafo.getRandomNodo()
+
+        return (inicio, fim)

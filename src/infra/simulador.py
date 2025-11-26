@@ -6,6 +6,9 @@ from typing import Optional, Dict
 from datetime import datetime, timedelta
 import os
 import time
+import random
+import threading
+from infra.simuladorDinamico import SimuladorDinamico
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
@@ -30,11 +33,13 @@ class Simulador:
         self.alocador = alocador
         self.navegador = navegador
         self.display = display
+        self.pedidoIdAtual = 0
 
         self.ambiente = GestaoAmbiente()
         self.metricas = Metricas()
         self.gestor_eventos = GestorEventos()
-
+        self.simuladorDinamico = SimuladorDinamico(0.4, 0.3)
+        
         self.tempo_simulacao = tempo_inicial or datetime.now()
         self.velocidade_simulacao = velocidade_simulacao
         self.frequencia_calculo = frequencia_calculo
@@ -124,7 +129,22 @@ class Simulador:
         tempo_decorrido_simulacao = timedelta(0)
 
         while self.tempo_simulacao < tempo_final and self.em_execucao:
-            # 1. Processar eventos agendados
+            # 1. Processar eventos agendados e adicionar eventos novos ne necessário
+            chuveu, novo_pedido = self.simuladorDinamico.simulacaoDinamica(self.ambiente, self.tempo_simulacao)
+            if(chuveu == True):
+                self._log("[DIN]Trocou de tempo")
+                
+            if novo_pedido:
+                self._log(f"[DIN] Pedido dinâmico gerado #{novo_pedido.id}")
+
+                self.gestor_eventos.agendar_evento(
+                    tempo=self.tempo_simulacao,
+                    tipo=TipoEvento.CHEGADA_PEDIDO,
+                    callback=self._processar_pedido,
+                    dados={'pedido': novo_pedido},
+                    prioridade=novo_pedido.prioridade
+                )
+    
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
 
             # 2. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
@@ -264,11 +284,10 @@ class Simulador:
         horario_log = self.tempo_simulacao.strftime('%H:%M:%S')
         self._log(
             f"\n {horario_log} - [cyan]Processando Pedido #{pedido.id}[/]")
-
+  
         # 1. Pré-calcular rota do pedido (origem -> destino)
         origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
         destino_nome = self.ambiente.grafo.getNodeName(pedido.destino)
-
         rota_viagem = self.navegador.calcular_rota(
             grafo=self.ambiente.grafo,
             origem=origem_pedido_nome,
@@ -319,9 +338,9 @@ class Simulador:
 
         distancia_total = distancia_ate_cliente + distancia_viagem
 
-        tempo_ate_cliente = self.ambiente._calcular_tempo_rota(
-            rota_ate_cliente) * 60
+        tempo_ate_cliente = self.ambiente._calcular_tempo_rota(rota_ate_cliente) * 60
         tempo_viagem = self.ambiente._calcular_tempo_rota(rota_viagem) * 60
+
         # NOTA: rever se devia ser com a distancia total
         custo = distancia_viagem * veiculo.custo_operacional_km
         emissoes = self.ambiente._calcular_emissoes(veiculo, distancia_viagem)
