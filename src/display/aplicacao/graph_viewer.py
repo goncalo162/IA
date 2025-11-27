@@ -1,8 +1,8 @@
-# display/aplicacao/graph_viewer.py
+"""Viewer principal - integra os módulos."""
+
 import tkinter as tk
 import networkx as nx
 import matplotlib
-# ensure TkAgg backend (important when starting in threads on some platforms)
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -10,24 +10,19 @@ from matplotlib.animation import FuncAnimation
 from datetime import datetime
 import traceback
 
-from display.aplicacao.layout_utils import compute_layout
-from display.aplicacao.desenhar import draw_graph, update_graph_drawing
+from display.aplicacao.viewport import Viewport
+from display.aplicacao.desenhar import GraphDrawer
 from display.aplicacao.interacoes import register_interactions
+from display.aplicacao.layout_utils import compute_layout_best
 from display.aplicacao.queue_handler import process_queue
 
 
 class AnimatedGraphApp:
-    """
-    Tkinter + Matplotlib viewer. Designed to be run in a background thread
-    *only if* your platform permits it and you run Textual in the main thread.
-    """
+    """Viewer principal com modularização."""
 
     def __init__(self, grafo, ambiente, command_queue):
-        print("[GraphViewer] Initializing...")
+        print("[GraphViewer] Inicializando...")
         
-        # NOTE: if this raises "Starting a Matplotlib GUI outside the main thread"
-        # your platform/OS/Python configuration prevents background GUIs.
-        # In that case you must run this in the main thread.
         self.root = tk.Tk()
         self.root.title("Simulação - Visualizador de Grafo")
 
@@ -35,12 +30,17 @@ class AnimatedGraphApp:
         self.ambiente = ambiente
         self.command_queue = command_queue
 
-        # --- Matplotlib setup ---
-        self.fig, self.ax = plt.subplots(figsize=(12, 8))
+        # ========== MÓDULOS ==========
+        self.viewport = Viewport()
+        self.drawer = GraphDrawer()
+        self.interaction_handler = None
+
+        # ========== MATPLOTLIB SETUP ==========
+        self.fig, self.ax = plt.subplots(figsize=(14, 10))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Build NetworkX graph from grafo
+        # ========== NETWORKX GRAPH ==========
         self.G = nx.Graph()
         for node in grafo.getNodes():
             self.G.add_node(node.getName(), __node_obj=node)
@@ -48,12 +48,13 @@ class AnimatedGraphApp:
             for destino, aresta in arestas:
                 self.G.add_edge(origem, destino, aresta=aresta)
 
-        print(f"[GraphViewer] Graph has {len(self.G.nodes())} nodes and {len(self.G.edges())} edges")
+        print(f"[GraphViewer] Grafo: {len(self.G.nodes())} nós, {len(self.G.edges())} arestas")
 
-        # compute layout (returns data coords in a reasonable span)
-        self.pos = compute_layout(self.G, scale=1.0, k_factor=8.0)
-
-        # Initialize car info (legacy compatibility)
+        # ========== LAYOUT ==========
+        # Aumentar espaçamento: aumenta k_factor de 6 para 12, e scale de 10 para 20
+        self.pos = compute_layout_best(self.G, scale=2.0)
+        
+        # ========== INFORMAÇÕES DO CARRO ==========
         start_node = list(self.G.nodes())[0]
         sx, sy = self.pos[start_node]
         self.car_info = {
@@ -67,63 +68,103 @@ class AnimatedGraphApp:
             "visual_y": sy,
             "use_visual_start": False,
         }
-
-        # Initialize drawing structures
-        self.edge_lines = {}
-        self.node_patches = {}
-        self.node_texts = {}
-        self.vehicle_markers = {}
         self.car_point = None
 
-        # Debug: check initial vehicles
+        # ========== DEBUG VEÍCULOS ==========
         if self.ambiente is not None:
             veiculos = self.ambiente.listar_veiculos()
-            print(f"[GraphViewer] Initial vehicles count: {len(veiculos)}")
-            for v in veiculos:
-                print(f"  - Vehicle {v.id_veiculo} at {v.localizacao_atual}")
+            print(f"[GraphViewer] {len(veiculos)} veículos iniciais")
 
-        # Draw initial graph state
-        print("[GraphViewer] Drawing initial graph...")
-        draw_graph(self)
+        # ========== DESENHAR E CONFIGURAR ==========
+        print("[GraphViewer] Desenhando grafo inicial...")
+        self._draw_complete_graph()
         
-        # Register mouse/keyboard interactions
-        register_interactions(self)
+        # Registar interações (ANTES de aplicar auto-scale)
+        self.interaction_handler = InteractionHandler(self)
+        self.interaction_handler.register(self.canvas, self.ax)
 
-        # Start processing command queue
+        # Aplicar auto-scale inicial
+        self.viewport.apply_auto_scale(self.ax, self.pos, margin=0.15)
+
+        # ========== LOOPS ==========
         self.root.after(100, lambda: process_queue(self))
-
-        # Start animation loop (for smooth car movement if needed)
         self.animation = FuncAnimation(self.fig, self._animation_step, interval=50, blit=False)
         
-        print("[GraphViewer] Initialization complete")
+        print("[GraphViewer] Inicialização completa")
+
+    def _draw_complete_graph(self):
+        """Desenha o grafo completo (primeira vez)."""
+        self.ax.cla()
+        self.ax.grid(False)
+        self.ax.set_aspect("equal", adjustable="datalim")
+
+        node_radius = self.drawer.compute_node_radius(self.pos)
+
+        # Desenhar arestas, nós e veículos
+        self.drawer.draw_edges(self.ax, self.G, self.pos)
+        self.drawer.draw_nodes(self.ax, self.G, self.pos)
+        self.drawer.draw_vehicles(self.ax, self.pos, self.ambiente, node_radius)
+
+        # Handle legacy car_point
+        if self.car_point is None:
+            vx = self.car_info.get("visual_x", 0.0)
+            vy = self.car_info.get("visual_y", 0.0)
+            self.car_point, = self.ax.plot(
+                [vx], [vy], "ro", markersize=max(6, int(node_radius * 40)), zorder=5
+            )
+
+        self.canvas.draw_idle()
 
     def _animation_step(self, _):
-        """Animation callback - updates visual elements if car is moving."""
+        """Passo de animação - atualizar se há movimento."""
         if self.car_info.get("is_moving"):
-            update_graph_drawing(self)
+            self._update_drawing()
 
-    # --------------------------------------------------------
-    # External API called by simulator via queue
-    # --------------------------------------------------------
-    
+    def _update_drawing(self):
+        """Atualiza posições mantendo viewport."""
+        # Guardar viewport antes de atualizar
+        self.viewport.save_state(self.ax)
+
+        # Atualizar posições
+        self.drawer.update_positions(self.pos)
+
+        # Atualizar veículos (se em movimento)
+        node_radius = self.drawer.compute_node_radius(self.pos)
+        self.drawer.draw_vehicles(self.ax, self.pos, self.ambiente, node_radius)
+
+        # Atualizar título com tempo e viagens
+        tempo_str = self.car_info.get("tempo", "--:--:--")
+        viagens_ativas = len(self.car_info.get("viagens", []))
+        self.ax.set_title(f"Simulação — Tempo {tempo_str} | Viagens ativas: {viagens_ativas}")
+
+        # Update car_point if needed
+        if self.car_point is not None:
+            vx = self.car_info.get("visual_x", 0.0)
+            vy = self.car_info.get("visual_y", 0.0)
+            self.car_point.set_data([vx], [vy])
+
+        # Restaurar viewport
+        self.viewport.restore_state(self.ax)
+        self.canvas.draw_idle()
+        print("[GraphViewer] Atualização concluída.")
+
+    # ========== API PÚBLICA (chamada via queue) ==========
+
     def update_time(self, tempo_simulacao, viagens_ativas):
-        """Called via queue -> 'update_time' messages."""
-        # Format and display time in title
+        """Atualizar tempo e viagens."""
         if isinstance(tempo_simulacao, datetime):
             tstr = tempo_simulacao.strftime("%H:%M:%S")
         else:
             tstr = str(tempo_simulacao)
         
         self.ax.set_title(f"Simulação — Tempo {tstr} | Viagens ativas: {len(viagens_ativas)}")
-        
-        # Redraw to show updated vehicle positions
-        update_graph_drawing(self)
+        self._update_drawing()
 
     def highlight_route(self, rota):
-        """Optional: draw a highlighted route (one-off)."""
+        """Destaca uma rota."""
         if not rota or len(rota) < 2:
             return
-            
+        
         for i in range(len(rota) - 1):
             u, v = rota[i], rota[i + 1]
             if u in self.pos and v in self.pos:
@@ -134,11 +175,10 @@ class AnimatedGraphApp:
         self.canvas.draw_idle()
 
     def run(self):
-        """Start Tk mainloop (blocks this thread)."""
-        print("[GraphViewer] Starting mainloop...")
+        """Inicia o mainloop."""
+        print("[GraphViewer] Iniciando mainloop...")
         try:
             self.root.mainloop()
         except Exception as e:
-            print(f"[GraphViewer] mainloop exited with error: {e}")
-
+            print(f"[GraphViewer] Erro: {e}")
             traceback.print_exc()
