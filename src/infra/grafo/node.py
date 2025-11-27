@@ -8,10 +8,11 @@ class TipoNodo(Enum):
 
 
 class Node:
-    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL, x: float = None, y: float = None):
+    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL, x: float = None, y: float = None, atratividade=0):
         self.m_id = id
         self.m_name = str(name)
         self.m_tipo = tipo
+        self.m_atratividade = atratividade
         # Coordenadas opcionais para visualização
         self.m_x = float(x) if x is not None else None
         self.m_y = float(y) if y is not None else None
@@ -34,6 +35,9 @@ class Node:
     def getTipoNodo(self):
         return self.m_tipo
 
+    def getAtratividade(self):
+        return self.m_atratividade
+
     def getX(self):
         return self.m_x
 
@@ -43,7 +47,7 @@ class Node:
     def __eq__(self, other):
         if not isinstance(other, Node):
             return False
-        return self.m_name == other.m_name and self.m_tipo == other.m_tipo
+        return self.m_name == other.m_name and self.m_tipo == other.m_tipo and self.m_atratividade == other.m_atratividade
 
     def __hash__(self):
         return hash((self.m_name, self.m_tipo))
