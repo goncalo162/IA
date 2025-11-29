@@ -16,7 +16,7 @@ from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
 
 # Constante: velocidade máxima com sincronização em tempo real
-VELOCIDADE_MAXIMA_SINCRONIZADA = 100.0
+VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA', 100.0))
 
 
 class Simulador:
