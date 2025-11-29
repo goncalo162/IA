@@ -1,7 +1,7 @@
 # Makefile para Simulador de Gestão de Frota de Táxis Inteligente
 # Projeto de IA - UMinho 2025
 
-.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo run-fast run-ultra
+.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo test test-ridesharing
 
 # Variáveis
 PYTHON := python
@@ -128,8 +128,11 @@ run-turbo:
 	@echo "A executar simulação SEM DISPLAY com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 500x (muito rápido)..."
 	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 500.0 --no-display
 
+test:
+	PYTHONPATH=src python -m unittest discover -s tests -p 'test_*.py' -v
 
-
+test-ridesharing:
+	PYTHONPATH=src python -m unittest tests/test_ridesharing.py -v
 
 
 
