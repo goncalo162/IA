@@ -116,6 +116,19 @@ class Veiculo(ABC):
         """Indica se há alguma viagem ativa neste veículo."""
         return any(v.viagem_ativa for v in self.viagens)
 
+    @property
+    def aceita_ridesharing(self) -> bool:
+        """Indica se o veículo aceita ride-sharing.
+        
+        Um veículo aceita ride-sharing se:
+        - Está disponível (sem viagens ativas), ou
+        - Todas as viagens ativas têm pedidos com ride_sharing=True
+        """
+        viagens_ativas = [v for v in self.viagens if v.viagem_ativa]
+        if not viagens_ativas:
+            return True
+        return all(v.pedido.ride_sharing for v in viagens_ativas)
+
     # -------------------- Rota veículo -> cliente (auxiliar de alocação) --------------------
 
     @property

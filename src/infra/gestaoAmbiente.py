@@ -115,10 +115,13 @@ class GestaoAmbiente:
                 if v.estado == EstadoVeiculo.DISPONIVEL]
 
     def listar_veiculos_ridesharing(self) -> List[Veiculo]:
-        """Retorna veículos elegíveis para ride-sharing: disponíveis e em andamento.
+        """Retorna veículos elegíveis para ride-sharing:
+        - Veículos disponíveis
+        - Veículos em andamento onde TODOS os pedidos das viagens ativas permitem ride-sharing
         """
         return [v for v in self._veiculos.values()
-                if v.estado in (EstadoVeiculo.DISPONIVEL, EstadoVeiculo.EM_ANDAMENTO)]
+                if v.estado in (EstadoVeiculo.DISPONIVEL, EstadoVeiculo.EM_ANDAMENTO)
+                and v.aceita_ridesharing]
 
     def remover_veiculo(self, id_veiculo: int) -> Optional[Veiculo]:
         """Remove um veículo da frota pelo ID."""
