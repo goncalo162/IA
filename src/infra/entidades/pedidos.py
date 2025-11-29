@@ -16,7 +16,7 @@ class Pedido:
 
     def __init__(self, pedido_id: int, origem: int, destino: int, passageiros: int,
                  horario_pretendido: datetime, prioridade: int = 0,
-                 preferencia_ambiental: int = 0):
+                 preferencia_ambiental: int = 0, ride_sharing: bool = False):
 
         self._id = pedido_id
         self._origem = origem
@@ -25,6 +25,7 @@ class Pedido:
         self._horario_pretendido = horario_pretendido
         self._prioridade = prioridade # Maior valor = maior prioridade (0 a 5)
         self._preferencia_ambiental = preferencia_ambiental
+        self._ride_sharing = bool(ride_sharing)
         self._estado: EstadoPedido = EstadoPedido.PENDENTE
         self._atribuir_a: Optional[int] = None
 
@@ -66,6 +67,10 @@ class Pedido:
         return self._preferencia_ambiental
 
     @property
+    def ride_sharing(self) -> bool:
+        return self._ride_sharing
+
+    @property
     def atribuir_a(self) -> Optional[int]:
         return self._atribuir_a
 
@@ -82,3 +87,8 @@ class Pedido:
         if not isinstance(value, EstadoPedido):
             raise ValueError("estado deve ser um EstadoPedido")
         self._estado = value
+
+    # -------------------- Helpers --------------------
+    def numero_passageiros(self) -> int:
+        """Convenience para obter número de passageiros."""
+        return self._passageiros

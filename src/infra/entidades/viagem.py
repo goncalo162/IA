@@ -1,5 +1,5 @@
-from typing import List
-
+from typing import List, Optional
+from infra.entidades.pedidos import Pedido
 
 class Viagem:
     """Representa uma viagem em progresso.
@@ -8,10 +8,11 @@ class Viagem:
     para separar responsabilidades (single responsibility).
     """
 
-    def __init__(self, pedido_id: int, rota_ate_cliente: List, rota_pedido: List,
+    def __init__(self, pedido: Pedido, rota_ate_cliente: List, rota_pedido: List,
                  distancia_ate_cliente: float, distancia_pedido: float,
                  tempo_inicio, grafo, velocidade_media: float = 50.0):
-        self.pedido_id = pedido_id
+        # Pedido completo (inclui atributos como passageiros e ride_sharing)
+        self.pedido: Pedido = pedido
 
         # Rota separada em dois segmentos: veículo->cliente e cliente->destino
         self.rota_ate_cliente = rota_ate_cliente or []
@@ -147,3 +148,12 @@ class Viagem:
     @viagem_ativa.setter
     def viagem_ativa(self, value: bool):
         self._viagem_ativa = bool(value)
+
+    @property
+    def pedido_id(self) -> Optional[int]:
+        """Convenience: obter id do pedido quando existir."""
+        return getattr(self.pedido, 'pedido_id', None)
+
+    def numero_passageiros(self) -> int:
+        """Retorna o número de passageiros associados a esta viagem."""
+        return self.pedido.numero_passageiros

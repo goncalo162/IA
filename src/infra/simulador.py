@@ -262,21 +262,24 @@ class Simulador:
         viagens_concluidas = []
 
         for veiculo_id, veiculo in list(self.viagens_ativas.items()):
-            concluiu = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            for v in concluidas:
+                viagens_concluidas.append((veiculo_id, veiculo, v))
 
-            if concluiu:
-                viagens_concluidas.append((veiculo_id, veiculo))
+        # Processar viagens concluídas (por viagem específica)
+        for veiculo_id, veiculo, viagem in viagens_concluidas:
+            self._concluir_viagem(veiculo, viagem)
+            # Remover veículo da lista ativa apenas se não houver mais viagens ativas
+            if not veiculo.viagem_ativa:
+                del self.viagens_ativas[veiculo_id]
 
-        # Processar viagens concluídas
-        for veiculo_id, veiculo in viagens_concluidas:
-            self._concluir_viagem(veiculo)
-            del self.viagens_ativas[veiculo_id]
+    def _concluir_viagem(self, veiculo, viagem):
+        """Processa a conclusão de uma viagem específica em um veículo."""
+        pedido_id = viagem.pedido_id
 
-    def _concluir_viagem(self, veiculo):
-        """Processa a conclusão de uma viagem."""
-        self.ambiente.concluir_pedido(veiculo.pedido_id)
+        self.ambiente.concluir_pedido(pedido_id, viagem)
 
-        log_msg = f"[green][/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
+        log_msg = f"[green][/] Viagem concluída: Pedido #{pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
 
     def _processar_pedido(self, pedido):
@@ -310,9 +313,14 @@ class Simulador:
         # so depois calcular a rota do carro escolhido ate ao inicio do pedido.
 
         # 2. Escolher veículo considerando autonomia e rota até cliente
+        # Escolher a lista de veículos apropriada (ride-sharing inclui em andamento)
+        lista_veiculos = (self.ambiente.listar_veiculos_ridesharing()
+                          if pedido.ride_sharing
+                          else self.ambiente.listar_veiculos_disponiveis())
+
         veiculo = self.alocador.escolher_veiculo(
             pedido=pedido,
-            veiculos_disponiveis=self.ambiente.listar_veiculos_disponiveis(),
+            veiculos_disponiveis=lista_veiculos,
             grafo=self.ambiente.grafo,
             rota_pedido=rota_viagem,
             distancia_pedido=distancia_viagem,
@@ -355,8 +363,8 @@ class Simulador:
             f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
 
         # 5. Iniciar viagem
-        veiculo.iniciar_viagem(
-            pedido_id=pedido.id,
+        iniciou = veiculo.iniciar_viagem(
+            pedido=pedido,
             rota_ate_cliente=rota_ate_cliente,
             rota_pedido=rota_viagem,
             distancia_ate_cliente=distancia_ate_cliente,
@@ -364,6 +372,14 @@ class Simulador:
             tempo_inicio=self.tempo_simulacao,
             grafo=self.ambiente.grafo
         )
+        if not iniciou:
+            self._log(
+                f"  [yellow][/] Capacidade excedida para ride-sharing no veículo {veiculo.id_veiculo}")
+            self.metricas.registar_pedido_rejeitado(
+                pedido.id, "Capacidade ride-sharing excedida")
+            if self.display and hasattr(self.display, 'registrar_rejeicao'):
+                self.display.registrar_rejeicao()
+            return
 
         self.viagens_ativas[veiculo.id_veiculo] = veiculo
 
@@ -382,4 +398,6 @@ class Simulador:
 
         # Atualizar displays
         if self.display:
-            self.display.atualizar(pedido, veiculo, veiculo.viagem.rota)
+            # Atualizar display com a rota desta nova viagem
+            nova_viagem_rota = veiculo.viagens[-1].rota if veiculo.viagens else []
+            self.display.atualizar(pedido, veiculo, nova_viagem_rota)

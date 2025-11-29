@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from infra.entidades.viagem import Viagem
 
@@ -30,8 +30,8 @@ class Veiculo(ABC):
         # ID ou nome do nó onde o veículo está
         self._localizacao_atual = localizacao_atual
 
-        # Estado de viagem agora é encapsulado na classe Viagem
-        self.viagem: Optional[Viagem] = None
+        # Agora um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
+        self.viagens: List[Viagem] = []
 
         # Dados auxiliares da próxima viagem (rota veículo->cliente)
         self._rota_ate_cliente: list = []
@@ -120,8 +120,8 @@ class Veiculo(ABC):
 
     @property
     def viagem_ativa(self):
-        """Retorna a localização atual (nome do nó ou ID)."""
-        return self.viagem.viagem_ativa if self.viagem else False
+        """Indica se há alguma viagem ativa neste veículo."""
+        return any(v.viagem_ativa for v in self.viagens)
 
     # -------------------- Rota veículo -> cliente (auxiliar de alocação) --------------------
 
@@ -142,17 +142,28 @@ class Veiculo(ABC):
         self._distancia_ate_cliente = float(
             value) if value is not None else 0.0
 
-    def iniciar_viagem(self, pedido_id: int,
+    def iniciar_viagem(self, pedido,
                        rota_ate_cliente: list,
                        rota_pedido: list,
                        distancia_ate_cliente: float,
                        distancia_pedido: float,
                        tempo_inicio,
                        grafo,
-                       velocidade_media: float = 50.0):
-        """Inicia uma viagem separando rota até cliente e rota do pedido."""
-        self.viagem = Viagem(
-            pedido_id=pedido_id,
+                       velocidade_media: float = 50.0) -> bool:
+        """Inicia uma viagem e adiciona ao conjunto de viagens ativas.
+
+        Valida capacidade: soma de passageiros em viagens ativas + novos
+        não pode exceder a capacidade do veículo, a menos que a lógica
+        externa permita divisão de embarques.
+        """
+        
+        passageiros_novos = pedido.numero_passageiros()
+
+        if self.numero_passageiros + passageiros_novos > self.capacidade_passageiros:
+            return False
+
+        nova_viagem = Viagem(
+            pedido=pedido,
             rota_ate_cliente=rota_ate_cliente,
             rota_pedido=rota_pedido,
             distancia_ate_cliente=distancia_ate_cliente,
@@ -162,54 +173,87 @@ class Veiculo(ABC):
             velocidade_media=velocidade_media,
         )
 
-    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> bool:
-        """Delega atualização de progresso para Viagem. Retorna True se viagem for concluída."""
-        if not self.viagem:
-            return False
+        # Atualizar contagem de passageiros do veículo
+        self._numero_passageiros += passageiros_novos
+        self.viagens.append(nova_viagem)
+        # Estado passa para EM_ANDAMENTO se houver ao menos uma viagem ativa
+        self.estado = EstadoVeiculo.EM_ANDAMENTO
+        return True
 
-        # Guardar distância percorrida antes de atualizar para calcular o delta
-        distancia_antes = self.viagem.distancia_percorrida
+    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> List[Viagem]:
+        """Atualiza o progresso de todas as viagens ativas e autonomia proporcional.
 
-        viagem_concluida = self.viagem.atualizar_progresso(tempo_decorrido_horas)
+        Retorna lista de viagens concluídas neste passo.
+        """
+        viagens_concluidas: List[Viagem] = []
+        distancia_total_avancada = 0.0
 
-        # Distância efetivamente percorrida neste passo
-        distancia_depois = self.viagem.distancia_percorrida
-        distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+        for v in list(self.viagens):
+            if not v.viagem_ativa:
+                continue
+            distancia_antes = v.distancia_percorrida
+            concluida = v.atualizar_progresso(tempo_decorrido_horas)
+            distancia_depois = v.distancia_percorrida
+            distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+            distancia_total_avancada += distancia_avancada
+            if concluida:
+                viagens_concluidas.append(v)
 
-        # Atualizar autonomia com base na distância avançada neste passo
-        if distancia_avancada > 0:
-            self.atualizar_autonomia(distancia_avancada)
+        if distancia_total_avancada > 0:
+            self.atualizar_autonomia(distancia_total_avancada)
 
-        return viagem_concluida
+        return viagens_concluidas
 
-    def concluir_viagem(self, destino):
-        """Finaliza a viagem (delegado para Viagem e limpa a referência)."""
-        if self.viagem:
+    def concluir_viagem(self, viagem: Viagem):
+        """Finaliza apenas a viagem fornecida.
+
+        Atualiza a localização se `destino` for informado; remove apenas
+        os passageiros associados a esta viagem e mantém as demais.
+        """
+        if viagem and viagem in self.viagens:
+            passageiros_remover = viagem.numero_passageiros
             try:
-                self.viagem.concluir()
-                self.localizacao_atual = destino
-                self.estado = EstadoVeiculo.DISPONIVEL
-                self._numero_passageiros = 0
-                self._rota_ate_cliente = []
-                self._distancia_ate_cliente = 0.0
+                viagem.concluir()
+                if viagem.destino is not None:
+                    self.localizacao_atual = viagem.destino
+                # Remover apenas passageiros desta viagem
+                self._numero_passageiros = max(0, self._numero_passageiros - passageiros_remover)
             finally:
-                self.viagem = None
+                self.viagens.remove(viagem)
+                # Se ainda restarem viagens ativas, continuar em andamento
+                if any(v.viagem_ativa for v in self.viagens):
+                    self.estado = EstadoVeiculo.EM_ANDAMENTO
+                else:
+                    self.estado = EstadoVeiculo.DISPONIVEL
 
     @property
-    def progresso_percentual(self) -> float:
-        """Retorna o progresso da viagem em percentual (0-100)."""
-        if not self.viagem:
+    def progresso_percentual_medio(self) -> float:
+        """Retorna o progresso médio das viagens ativas (0-100)."""
+        ativos = [v.progresso_percentual for v in self.viagens if v.viagem_ativa]
+        if not ativos:
             return 0.0
-        return self.viagem.progresso_percentual
+        return sum(ativos) / len(ativos)
+    
+    @property
+    def progresso_percentual(self) -> List[float]:
+        """Retorna o progresso das viagens ativas (0-100)."""
+        return [v.progresso_percentual for v in self.viagens if v.viagem_ativa]
 
     @property
-    def destino(self) -> str:
-        """Retorna o destino final da rota."""
-        return self.viagem.destino if self.viagem else None
+    def primeiro_destino(self) -> str:
+        """Retorna um destino representativo (primeira viagem ativa)."""
+        for v in self.viagens:
+            if v.viagem_ativa:
+                return v.destino
+        return None
 
     @property
-    def pedido_id(self):
-        return self.viagem.pedido_id if self.viagem else None
+    def primeiro_pedido_id(self):
+        """Retorna o primeiro pedido ativo (se existir)."""
+        for v in self.viagens:
+            if v.viagem_ativa:
+                return v.pedido.id
+        return None
 
 # -------------------- Veículo a Combustão ---------------- #
 
