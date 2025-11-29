@@ -163,7 +163,6 @@ class GestaoAmbiente:
 
         pedido.atribuir_a = veiculo.id_veiculo
         pedido.estado = pedido.estado.EM_CURSO
-        # talvez aqui meter indisponivel e passar para em adamento em comecar_viagem
         veiculo.estado = veiculo.estado.EM_ANDAMENTO
 
         return True

@@ -1,25 +1,21 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional, List
+from typing import List
 
 from infra.entidades.viagem import Viagem
-
-# NOTA: enum sus, depois vejam os estados melhor
-
 
 class EstadoVeiculo(Enum):
     DISPONIVEL = 1
     EM_ANDAMENTO = 2
     INDISPONIVEL = 3
     EM_REABASTECIMENTO = 4
-    EM_MANUTENCAO = 5
 
 
 class Veiculo(ABC):
     def __init__(self, id_veiculo: int, autonomia_maxima: int, autonomia_atual: int,
                  capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
                  estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual=0):
-        # atributos protegidos (encapsulados) — aceder via propriedades
+
         self._id_veiculo = id_veiculo
         self._autonomia_maxima = autonomia_maxima
         self._autonomia_atual = autonomia_atual
@@ -27,20 +23,17 @@ class Veiculo(ABC):
         self._numero_passageiros = numero_passageiros
         self._custo_operacional_km = custo_operacional_km
         self._estado = estado
-        # ID ou nome do nó onde o veículo está
-        self._localizacao_atual = localizacao_atual
+        self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
+        self.viagens: List[Viagem] = [] # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
 
-        # Agora um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
-        self.viagens: List[Viagem] = []
-
-        # Dados auxiliares da próxima viagem (rota veículo->cliente)
+        # Dados auxiliares da possível próxima viagem (rota veículo->cliente)
         self._rota_ate_cliente: list = []
         self._distancia_ate_cliente: float = 0.0
 
-    @abstractmethod
+
     def reabastecer(self):
-        """Método abstrato — implementado de forma diferente nos veículos a combustão e elétricos"""
-        return
+        """Reabastece o veículo, restaurando sua autonomia ao máximo."""
+        self.autonomia_atual = self.autonomia_maxima
 
     @abstractmethod
     def tempoReabastecimento(self):
@@ -52,15 +45,14 @@ class Veiculo(ABC):
             self._numero_passageiros += numero
             return True
         return False
-
-    def reabastecer(self):
-        self.autonomia_atual = self.autonomia_maxima
-        self.estado = EstadoVeiculo.DISPONIVEL
+    
+    def remover_passageiros(self, numero: int):
+        """Remove passageiros do veículo, garantindo que não fique negativo."""
+        self._numero_passageiros = max(0, self._numero_passageiros - numero)
 
     def atualizar_autonomia(self, km_percorridos: int):
         """Reduz a autonomia atual de acordo com a distância percorrida"""
-        self.autonomia_atual = max(
-            0, self.autonomia_atual - km_percorridos)  # Evita autonomia negativa
+        self.autonomia_atual = max(0, self.autonomia_atual - km_percorridos)  # Evita autonomia negativa
 
     def __str__(self):
         return (f"{self.__class__.__name__} [{self.id_veiculo}] | "
@@ -141,6 +133,8 @@ class Veiculo(ABC):
     def distancia_ate_cliente(self, value: float):
         self._distancia_ate_cliente = float(
             value) if value is not None else 0.0
+        
+    # -------------------- métodos auxiliares para as suas viagens --------------------
 
     def iniciar_viagem(self, pedido,
                        rota_ate_cliente: list,
@@ -159,7 +153,7 @@ class Veiculo(ABC):
         
         passageiros_novos = pedido.numero_passageiros
 
-        if self.numero_passageiros + passageiros_novos > self.capacidade_passageiros:
+        if (not self.adicionar_passageiros(passageiros_novos)):
             return False
 
         nova_viagem = Viagem(
@@ -173,10 +167,7 @@ class Veiculo(ABC):
             velocidade_media=velocidade_media,
         )
 
-        # Atualizar contagem de passageiros do veículo
-        self._numero_passageiros += passageiros_novos
         self.viagens.append(nova_viagem)
-        # Estado passa para EM_ANDAMENTO se houver ao menos uma viagem ativa
         self.estado = EstadoVeiculo.EM_ANDAMENTO
         return True
 
@@ -212,18 +203,14 @@ class Veiculo(ABC):
         """
         if viagem and viagem in self.viagens:
             passageiros_remover = viagem.numero_passageiros()
-            # Concluir a viagem e atualizar estado/localização
             viagem.concluir()
             if viagem.destino is not None:
                 self.localizacao_atual = viagem.destino
-            # Remover apenas passageiros desta viagem
-            self._numero_passageiros = max(0, self._numero_passageiros - passageiros_remover)
-            # Remover viagem da lista
+
+            self.remover_passageiros(passageiros_remover)
             self.viagens.remove(viagem)
-            # Atualizar estado do veículo conforme viagens remanescentes
-            if any(v.viagem_ativa for v in self.viagens):
-                self.estado = EstadoVeiculo.EM_ANDAMENTO
-            else:
+
+            if not self.viagem_ativa: # Atualizar estado do veículo conforme viagens remanescentes
                 self.estado = EstadoVeiculo.DISPONIVEL
 
     @property
@@ -236,7 +223,7 @@ class Veiculo(ABC):
     
     @property
     def progresso_percentual(self) -> List[float]:
-        """Retorna o progresso das viagens ativas (0-100)."""
+        """Retorna o progresso de todas as viagens ativas (0-100)."""
         return [v.progresso_percentual for v in self.viagens if v.viagem_ativa]
 
     @property
@@ -276,8 +263,8 @@ class VeiculoEletrico(Veiculo):
                  custo_operacional_km, tempo_recarga_km: int, numero_passageiros=0, localizacao_atual=0):
         super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
                          numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
-        # tempo médio para carga de um km (armazenado em campo protegido)
-        self._tempo_recarga_km = tempo_recarga_km
+        
+        self._tempo_recarga_km = tempo_recarga_km # tempo médio para carga de um km 
 
     def tempoReabastecimento(self):
         tempo = self.tempo_recarga_km * \
@@ -289,4 +276,3 @@ class VeiculoEletrico(Veiculo):
         return self._tempo_recarga_km
 
 
-# -------------------- Propriedades (getters/setters) --------------------
