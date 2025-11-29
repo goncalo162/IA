@@ -9,6 +9,7 @@ from infra.entidades.veiculos import Veiculo
 from infra.entidades.pedidos import Pedido
 from infra.grafo.grafo import Grafo
 from algoritmos.criterios import FuncaoCusto, Heuristica, CustoDefault, ZeroHeuristica
+from infra.entidades.veiculos import EstadoVeiculo
 
 
 class AlocadorBase(ABC):
@@ -55,3 +56,12 @@ class AlocadorBase(ABC):
     def _verificar_autonomia(self, veiculo: Veiculo, distancia: float) -> bool:
         """Verifica se o veículo tem autonomia suficiente."""
         return veiculo.autonomia_atual >= distancia
+
+    def _veiculo_passa_pela_origem(self, veiculo: Veiculo, pedido: Pedido, grafo: Grafo) -> bool:
+        """Quando veículo está em andamento, valida se a sua rota restante passa pela origem do pedido.
+        """
+        if veiculo.estado != EstadoVeiculo.EM_ANDAMENTO:
+            return True
+
+        origem_pedido_nome = grafo.getNodeName(pedido.origem)
+        return veiculo.passa_por(origem_pedido_nome)

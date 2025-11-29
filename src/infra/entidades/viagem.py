@@ -137,3 +137,19 @@ class Viagem:
     def numero_passageiros(self) -> int:
         """Retorna o número de passageiros associados a esta viagem."""
         return self.pedido.numero_passageiros
+
+    def passa_por(self, local: str) -> bool:
+        """Indica se a rota restante desta viagem passa por `local`.
+
+        Considera do segmento atual (`indice_segmento_atual`) até ao final da `rota`.
+        `local` deve ser o nome de nó (string) presente na rota.
+        """
+        if not isinstance(local, str) or not local:
+            return False
+        rota = self.rota 
+        if not rota:
+            return False
+        idx = self.indice_segmento_atual
+        idx = max(0, min(idx, len(rota) - 1))
+        restante = rota[idx:]
+        return local in restante

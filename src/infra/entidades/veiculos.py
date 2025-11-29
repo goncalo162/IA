@@ -243,6 +243,16 @@ class Veiculo(ABC):
                 return v.pedido.id
         return None
 
+    def passa_por(self, local: str) -> bool:
+        """Retorna True se alguma viagem ativa passar por `local`.
+        """
+        if not isinstance(local, str) or not local:
+            return False
+        for v in self.viagens:
+            if v.viagem_ativa and v.passa_por(local):
+                return True
+        return False
+
 # -------------------- Veículo a Combustão ---------------- #
 
 
