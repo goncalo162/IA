@@ -146,10 +146,14 @@ class Viagem:
         """
         if not isinstance(local, str) or not local:
             return False
-        rota = self.rota 
+        restante = self.rota_restante()
+        return local in restante
+
+    def rota_restante(self) -> List[str]:
+        """Retorna a rota restante (do segmento atual até ao fim)."""
+        rota = self.rota
         if not rota:
-            return False
+            return []
         idx = self.indice_segmento_atual
         idx = max(0, min(idx, len(rota) - 1))
-        restante = rota[idx:]
-        return local in restante
+        return rota[idx:]

@@ -252,6 +252,46 @@ class Veiculo(ABC):
             if v.viagem_ativa and v.passa_por(local):
                 return True
         return False
+    
+
+    def rota_total_viagens(self) -> list[str]:
+        """
+        Concatena as rotas restantes das viagens ativas numa única rota contínua,
+        eliminando qualquer sobreposição, por exemplo:
+        A,B,C + B,C,D,E,F + D,E,F,G -> A,B,C,D,E,F,G
+        """
+        combinado: list[str] = []
+
+        for v in self.viagens:
+            if not v.viagem_ativa:
+                continue
+            rota = v.rota_restante()
+            if not rota:
+                continue
+
+            combinado = self.merge_rotas(combinado, rota)
+
+        return combinado
+
+
+    def merge_rotas(self, combinado: list[str], nova: list[str]) -> list[str]:
+        """
+        Une duas rotas removendo a maior sobreposição possível entre
+        o final de 'combinado' e o início de 'nova'.
+        """
+        if not combinado:
+            return nova[:]
+
+        max_overlap = 0
+        max_len = min(len(combinado), len(nova))
+        # Encontrar maior sobreposição
+        for k in range(1, max_len + 1):
+            if combinado[-k:] == nova[:k]:
+                max_overlap = k
+
+        return combinado + nova[max_overlap:]
+
+
 
 # -------------------- Veículo a Combustão ---------------- #
 
