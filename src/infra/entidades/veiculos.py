@@ -211,20 +211,20 @@ class Veiculo(ABC):
         os passageiros associados a esta viagem e mantém as demais.
         """
         if viagem and viagem in self.viagens:
-            passageiros_remover = viagem.numero_passageiros
-            try:
-                viagem.concluir()
-                if viagem.destino is not None:
-                    self.localizacao_atual = viagem.destino
-                # Remover apenas passageiros desta viagem
-                self._numero_passageiros = max(0, self._numero_passageiros - passageiros_remover)
-            finally:
-                self.viagens.remove(viagem)
-                # Se ainda restarem viagens ativas, continuar em andamento
-                if any(v.viagem_ativa for v in self.viagens):
-                    self.estado = EstadoVeiculo.EM_ANDAMENTO
-                else:
-                    self.estado = EstadoVeiculo.DISPONIVEL
+            passageiros_remover = viagem.numero_passageiros()
+            # Concluir a viagem e atualizar estado/localização
+            viagem.concluir()
+            if viagem.destino is not None:
+                self.localizacao_atual = viagem.destino
+            # Remover apenas passageiros desta viagem
+            self._numero_passageiros = max(0, self._numero_passageiros - passageiros_remover)
+            # Remover viagem da lista
+            self.viagens.remove(viagem)
+            # Atualizar estado do veículo conforme viagens remanescentes
+            if any(v.viagem_ativa for v in self.viagens):
+                self.estado = EstadoVeiculo.EM_ANDAMENTO
+            else:
+                self.estado = EstadoVeiculo.DISPONIVEL
 
     @property
     def progresso_percentual_medio(self) -> float:

@@ -156,4 +156,4 @@ class Viagem:
 
     def numero_passageiros(self) -> int:
         """Retorna o número de passageiros associados a esta viagem."""
-        return self.pedido.numero_passageiros
+        return self.pedido.numero_passageiros()
