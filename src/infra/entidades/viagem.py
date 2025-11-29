@@ -4,15 +4,14 @@ from infra.entidades.pedidos import Pedido
 class Viagem:
     """Representa uma viagem em progresso.
 
-    Encapsula rota, segmentos, progresso e timestamps. Foi extraída de Veiculo
-    para separar responsabilidades (single responsibility).
+    Encapsula rota, segmentos, progresso e timestamps. 
     """
 
     def __init__(self, pedido: Pedido, rota_ate_cliente: List, rota_pedido: List,
                  distancia_ate_cliente: float, distancia_pedido: float,
                  tempo_inicio, grafo, velocidade_media: float = 50.0):
-        # Pedido completo (inclui atributos como passageiros e ride_sharing)
-        self.pedido: Pedido = pedido
+        
+        self.pedido: Pedido = pedido # Pedido associado a esta viagem
 
         # Rota separada em dois segmentos: veículo->cliente e cliente->destino
         self.rota_ate_cliente = rota_ate_cliente or []
@@ -33,7 +32,7 @@ class Viagem:
         self.indice_segmento_atual = 0
         self.distancia_no_segmento = 0.0
         self.segmentos = []
-        # Flag interna que indica se a viagem está ativa
+
         self._viagem_ativa = True
 
         # Pré-calcular informações dos segmentos ao longo da rota completa
@@ -42,33 +41,26 @@ class Viagem:
             destino = self.rota[i + 1]
             aresta = grafo.getEdge(origem, destino)
 
-            if aresta:
-                distancia = aresta.getQuilometro()
-                velocidade = aresta.getVelocidadeMaxima()
-                transito = aresta.getTransito()
+            if not aresta:
+                # Num grafo válido, toda transição de rota deve corresponder a uma aresta.
+                # Se não existir, é um erro de construção da rota (ou do grafo).
+                raise ValueError(f"Rota inválida: não existe aresta entre {origem} -> {destino}")
 
-                tempo_base_horas = distancia / \
-                    velocidade if velocidade > 0 else distancia / velocidade_media
-                fator_transito = transito.value if getattr(
-                    transito, 'value', None) is not None else 1.0
-                tempo_horas = tempo_base_horas * fator_transito
+            distancia = aresta.getQuilometro()
+            velocidade = aresta.getVelocidadeMaxima()
+            transito = aresta.getTransito()
 
-                self.segmentos.append({
-                    'origem': origem,
-                    'destino': destino,
-                    'distancia': distancia,
-                    'velocidade': velocidade,
-                    'tempo_horas': tempo_horas
-                })
-            else:
-                distancia_fallback = 10.0
-                self.segmentos.append({
-                    'origem': origem,
-                    'destino': destino,
-                    'distancia': distancia_fallback,
-                    'velocidade': velocidade_media,
-                    'tempo_horas': distancia_fallback / velocidade_media
-                })
+            tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
+            fator_transito = transito.value if getattr(transito, 'value', None) is not None else 1.0
+            tempo_horas = tempo_base_horas * fator_transito
+
+            self.segmentos.append({
+                'origem': origem,
+                'destino': destino,
+                'distancia': distancia,
+                'velocidade': velocidade,
+                'tempo_horas': tempo_horas
+            })
 
     def atualizar_progresso(self, tempo_decorrido_horas: float) -> bool:
         """
@@ -110,20 +102,8 @@ class Viagem:
         return False
 
     def concluir(self):
-        """Marcar viagem como concluída / limpar dados."""
-    # marcar internamente como concluída e limpar dados
+        """Marcar viagem como concluída"""
         self._viagem_ativa = False
-        self.rota = []
-        self.rota_ate_cliente = []
-        self.rota_pedido = []
-        self.distancia_total = 0.0
-        self.distancia_ate_cliente = 0.0
-        self.distancia_pedido = 0.0
-        self.distancia_percorrida = 0.0
-        self.tempo_inicio = None
-        self.segmentos = []
-        self.indice_segmento_atual = 0
-        self.distancia_no_segmento = 0.0
 
     @property
     def progresso_percentual(self) -> float:
@@ -151,8 +131,8 @@ class Viagem:
 
     @property
     def pedido_id(self) -> Optional[int]:
-        """Convenience: obter id do pedido quando existir."""
-        return getattr(self.pedido, 'pedido_id', None)
+        """Obter id do pedido quando existir."""
+        return self.pedido.id if self.pedido else None
 
     def numero_passageiros(self) -> int:
         """Retorna o número de passageiros associados a esta viagem."""
