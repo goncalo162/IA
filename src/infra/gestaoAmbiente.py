@@ -26,8 +26,6 @@ class GestaoAmbiente:
         self.grafo: Optional[Grafo] = None
         self._veiculos: Dict[int, Veiculo] = {}
         self._pedidos: Dict[int, Pedido] = {}
-        # Veículos com viagens ativas (para controlo centralizado)
-        self._viagens_ativas: Dict[int, Veiculo] = {}
 
     # -------------------- Carregar dados --------------------
 
@@ -185,8 +183,6 @@ class GestaoAmbiente:
             grafo=self.grafo,
             velocidade_media=velocidade_media,
         )
-        if iniciou:
-            self._viagens_ativas[veiculo.id_veiculo] = veiculo
         return iniciou
 
     def marcar_pedido_concluido(self, pedido: Pedido) -> bool:
@@ -197,39 +193,24 @@ class GestaoAmbiente:
         return True
     
     def concluir_pedido(self, pedido_id: int, viagem: Viagem) -> bool:
-        """Marca um pedido como concluído e atualiza o veículo associado."""
+        """Marca um pedido como concluído e atualiza o veículo associado.
+
+        Nota: não mantém registo de veículos com viagens ativas; essa gestão
+        é feita pelo `Simulador`.
+        """
         pedido = self.obter_pedido(pedido_id)
         if pedido is None or pedido.atribuir_a is None:
             return False
-        
+
         veiculo = self.obter_veiculo(pedido.atribuir_a)
         if veiculo is None:
             return False
-        
+
         self.marcar_pedido_concluido(pedido)
         veiculo.concluir_viagem(viagem)
-        # Se veículo não tem mais viagens ativas, remover do registo
-        if not veiculo.viagem_ativa and veiculo.id_veiculo in self._viagens_ativas:
-            self._viagens_ativas.pop(veiculo.id_veiculo, None)
         return True
 
-    def atualizar_viagens_ativas(self, tempo_passo_horas: float) -> List[Viagem]:
-        """Atualiza progresso de todas as viagens ativas e conclui as finalizadas.
-
-        Retorna lista de tuplos (veiculo, viagem) concluídos neste passo.
-        """
-        viagens_concluidas: List[tuple] = []
-        for veiculo_id, veiculo in list(self._viagens_ativas.items()):
-            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
-            for v in concluidas:
-                # concluir e atualizar estado
-                self.concluir_pedido(v.pedido_id, v)
-                viagens_concluidas.append((veiculo, v))
-        return viagens_concluidas
-
-    def viagens_ativas(self) -> Dict[int, Veiculo]:
-        """Exposição controlada do mapa de veículos com viagens ativas."""
-        return dict(self._viagens_ativas)
+    # Removidos: métodos de gestão de viagens ativas; o Simulador controla isso
 
     # -------------------- Cálculos Auxiliares --------------------
 
