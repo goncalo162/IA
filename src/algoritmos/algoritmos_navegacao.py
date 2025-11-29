@@ -94,6 +94,8 @@ class NavegadorCustoUniforme(NavegadorBase):
     """
 
     def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+        if origem == destino:
+            return [origem]
 
         # Fila de prioridade com tuplos (custo acumulado, nó atual, caminho)
         fronteira = [(0.0, origem, [origem])]
@@ -156,6 +158,8 @@ class NavegadorAEstrela(NavegadorBase):
         return "A* Informed"
 
     def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+        if origem == destino:
+            return [origem]
 
         # Priority queue storing (f(n), g(n), node, path)
         fronteira = []

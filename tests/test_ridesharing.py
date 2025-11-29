@@ -103,7 +103,8 @@ def test_multiple_trips_start_and_capacity():
     rota_trip = _build_long_route(grafo, min_hops=3)
     assert len(rota_trip) - 1 >= 3, f"Rota deve ter >=3 arestas: {rota_trip}"
     start_node = rota_trip[0]
-    rota_client = [start_node, start_node]
+    # quando origem == destino, navegador deveria devolver somente [start_node]
+    rota_client = [start_node]
     p1 = _pedido(101, 2)
     p2 = _pedido(102, 3)
 
@@ -169,7 +170,8 @@ def test_progress_updates_all_and_conclude_single():
     rota_trip2 = _build_long_route(grafo, min_hops=4)
     assert len(rota_trip2) - 1 >= 3, f"Rota progresso deve ter >=3 arestas: {rota_trip2}"
     start_node = rota_trip2[0]
-    rota_client = [start_node, start_node]
+    # quando origem == destino, navegador deveria devolver somente [start_node]
+    rota_client = [start_node]
     dist_trip2 = grafo.calcular_distancia_rota(rota_trip2)
 
     veiculo.iniciar_viagem(p1, rota_client, rota_trip2, 0.0, dist_trip2, datetime.now(), grafo)
