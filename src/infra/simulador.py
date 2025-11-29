@@ -337,6 +337,45 @@ class Simulador:
         self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
 
         # TODO: decidir se as localizações são nomes ou IDs
+        #TODO: REVER ISTO TUDO ABAIXO
+
+        # Ajuste de rotas para ride-sharing sem desvios:
+
+        #todo: rever se queremos sem desvios ou se pode fazer desvios e tem que recalcular a rota
+        # Se o veículo já tem viagens ativas, a rota do pedido deve iniciar
+        # coincidente com o plano atual do veículo e só depois estender até ao destino.
+        if pedido.ride_sharing and veiculo.estado == veiculo.estado.EM_ANDAMENTO:
+            try:
+                rota_total = veiculo.rota_total_viagens()
+            except Exception:
+                rota_total = []
+
+            if rota_total and origem_pedido_nome in rota_total:
+                idx_origem = rota_total.index(origem_pedido_nome)
+                # veículo -> cliente: do início do plano até à origem (inclui a origem)
+                nova_rota_ate_cliente = rota_total[:idx_origem+1]
+
+                # cliente -> destino: seguir o plano e, se necessário, estender até ao destino
+                tail = rota_total[idx_origem:]
+                if destino_nome in tail:
+                    dest_idx = tail.index(destino_nome)
+                    nova_rota_viagem = tail[:dest_idx+1]
+                else:
+                    rota_extra = self.navegador.calcular_rota(
+                        grafo=self.ambiente.grafo,
+                        origem=tail[-1],
+                        destino=destino_nome
+                    )
+                    if rota_extra and len(rota_extra) > 0:
+                        nova_rota_viagem = tail + (rota_extra[1:] if len(rota_extra) > 1 else [])
+                    else:
+                        nova_rota_viagem = rota_viagem  # fallback se não houver rota de extensão
+
+                # Atualizar distâncias e valores utilizados adiante
+                veiculo.rota_ate_cliente = nova_rota_ate_cliente
+                veiculo.distancia_ate_cliente = self.ambiente._calcular_distancia_rota(nova_rota_ate_cliente)
+                rota_viagem = nova_rota_viagem
+                distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
 
         # 3. Recuperar rota veículo -> cliente e distância calculadas pelo alocador
         rota_ate_cliente = veiculo.rota_ate_cliente
