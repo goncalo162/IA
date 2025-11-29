@@ -1,12 +1,16 @@
 """
 Motor principal da simulação.
-Coordena ambiente, algoritmos, métricas e display.
+Coorena ambiente, algoritmos, métricas e display.
 """
 from typing import Optional, Dict
 from datetime import datetime, timedelta
 import os
 import time
+from dotenv import load_dotenv
 from infra.simuladorDinamico import SimuladorDinamico
+
+# Carregar variáveis de ambiente
+load_dotenv()
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
@@ -36,7 +40,11 @@ class Simulador:
         self.ambiente = GestaoAmbiente()
         self.metricas = Metricas()
         self.gestor_eventos = GestorEventos()
-        self.simuladorDinamico = SimuladorDinamico(0.4, 0.3)
+        
+        # Carregar configurações do simulador dinâmico do .env
+        chance_troca_tempo = float(os.getenv('CHANCE_TROCA_TEMPO', 0.4))
+        chance_pedido_aleatorio = float(os.getenv('CHANCE_PEDIDO_ALEATORIO', 0.3))
+        self.simuladorDinamico = SimuladorDinamico(chance_troca_tempo, chance_pedido_aleatorio)
         
         self.tempo_simulacao = tempo_inicial or datetime.now()
         self.velocidade_simulacao = velocidade_simulacao

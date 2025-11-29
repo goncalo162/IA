@@ -62,7 +62,8 @@ pip install \
     textual \
     pillow \
     numpy \
-    scipy
+    scipy \
+    python-dotenv
 
 echo
 echo -e "${GREEN}Todos os ficheiros foram instalados com sucesso.${RESET}"
