@@ -4,7 +4,6 @@ Contém o grafo da cidade, frota de veículos e pedidos.
 """
 
 import json
-import random
 from typing import Dict, List, Optional
 from datetime import datetime
 
@@ -117,8 +116,6 @@ class GestaoAmbiente:
 
     def listar_veiculos_ridesharing(self) -> List[Veiculo]:
         """Retorna veículos elegíveis para ride-sharing: disponíveis e em andamento.
-
-        Nota: a seleção final deve validar capacidade e autonomia via alocador/veículo.
         """
         return [v for v in self._veiculos.values()
                 if v.estado in (EstadoVeiculo.DISPONIVEL, EstadoVeiculo.EM_ANDAMENTO)]
@@ -193,9 +190,6 @@ class GestaoAmbiente:
     
     def concluir_pedido(self, pedido_id: int, viagem: Viagem) -> bool:
         """Marca um pedido como concluído e atualiza o veículo associado.
-
-        Nota: não mantém registo de veículos com viagens ativas; essa gestão
-        é feita pelo `Simulador`.
         """
         pedido = self.obter_pedido(pedido_id)
         if pedido is None or pedido.atribuir_a is None:
@@ -209,22 +203,16 @@ class GestaoAmbiente:
         veiculo.concluir_viagem(viagem)
         return True
 
-    # Removidos: métodos de gestão de viagens ativas; o Simulador controla isso
-
     # -------------------- Cálculos Auxiliares --------------------
 
-    # nota: ver se é necessário ou usamos diretamente do grafo
     def _calcular_distancia_rota(self, rota) -> float:
-        """Wrapper para cálculo de distância delegando no grafo."""
-
+        """Cálculo de distância delegando no grafo."""
         if not self.grafo:
             return 0.0
         return self.grafo.calcular_distancia_rota(rota)
 
-    # nota: ver se é necessário ou usamos diretamente do grafo
     def _calcular_tempo_rota(self, rota) -> float:
-        """Wrapper para cálculo de tempo delegando no grafo."""
-
+        """Cálculo de tempo delegando no grafo."""
         if not self.grafo:
             return 0.0
         return self.grafo.calcular_tempo_rota(rota)
@@ -234,7 +222,7 @@ class GestaoAmbiente:
         if isinstance(veiculo, VeiculoEletrico):
             return 0.0
         else:
-            return distancia * 0.12
+            return distancia * 0.12 #NOTA: valor fictício de emissões por km para veículos a combustão pode ser ajustado conforme necessário
         
     def getRandomNodePair(self):
         inicio = self.grafo.getRandomNodo()

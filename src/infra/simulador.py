@@ -6,8 +6,6 @@ from typing import Optional, Dict
 from datetime import datetime, timedelta
 import os
 import time
-import random
-import threading
 from infra.simuladorDinamico import SimuladorDinamico
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
@@ -108,7 +106,7 @@ class Simulador:
 
         if self.velocidade_simulacao > VELOCIDADE_MAXIMA_SINCRONIZADA:
             self._log(
-                f"⚡ MODO TURBO ATIVADO: Velocidade > {VELOCIDADE_MAXIMA_SINCRONIZADA}x")
+                f" MODO TURBO ATIVADO: Velocidade > {VELOCIDADE_MAXIMA_SINCRONIZADA}x")
 
         self._log(f"Frequência de cálculo: {self.frequencia_calculo} Hz")
         self._log(
@@ -270,8 +268,8 @@ class Simulador:
         for veiculo_id, veiculo, viagem in viagens_concluidas:
             self._concluir_viagem(veiculo, viagem)
             # Remover veículo da lista ativa apenas se não houver mais viagens ativas
-            if not veiculo.viagem_ativa:
-                del self.viagens_ativas[veiculo_id]
+            if not veiculo.viagem_ativa and veiculo_id in self.viagens_ativas: #REVER ISTO porque sem a segunda condição nao funciona sempre, mas devia, ou seja, pode estar a apagar em sitios que nao devia
+                    del self.viagens_ativas[veiculo_id]
 
     def _concluir_viagem(self, veiculo, viagem):
         """Processa a conclusão de uma viagem específica em um veículo."""

@@ -3,7 +3,7 @@ Sistema de eventos dinâmicos para a simulação.
 Permite modelar situações como alterações de trânsito, falhas, etc.
 """
 from enum import Enum
-from typing import Optional, Any, Callable
+from typing import Optional, Callable
 from datetime import datetime
 import heapq
 
