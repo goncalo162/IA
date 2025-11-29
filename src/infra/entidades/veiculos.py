@@ -27,6 +27,7 @@ class Veiculo(ABC):
         self.viagens: List[Viagem] = [] # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
 
         # Dados auxiliares da possível próxima viagem (rota veículo->cliente)
+        #TODO: ver onde faz sentido voltar a meter isto a zeros para nao ficar com dados obsoletos (se estiver em andamento por exemplo, e mudar a localiação antes de começar a viagem)
         self._rota_ate_cliente: list = []
         self._distancia_ate_cliente: float = 0.0
 

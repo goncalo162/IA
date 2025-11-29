@@ -30,6 +30,8 @@ class AlocadorBase(ABC):
         self.funcao_custo: FuncaoCusto = funcao_custo if funcao_custo is not None else CustoDefault()
         self.heuristica: Heuristica = heuristica if heuristica is not None else ZeroHeuristica()
 
+        #adicionar estrutura auxiliar talvez dicionario de idveiulo para infos dos calculos do custo para escolher melhor os veiculos
+
     @abstractmethod
     def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
         """Escolhe o melhor veículo para atender um pedido.
