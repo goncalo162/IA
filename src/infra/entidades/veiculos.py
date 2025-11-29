@@ -157,7 +157,7 @@ class Veiculo(ABC):
         externa permita divisão de embarques.
         """
         
-        passageiros_novos = pedido.numero_passageiros()
+        passageiros_novos = pedido.numero_passageiros
 
         if self.numero_passageiros + passageiros_novos > self.capacidade_passageiros:
             return False

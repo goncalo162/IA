@@ -21,7 +21,7 @@ class Pedido:
         self._id = pedido_id
         self._origem = origem
         self._destino = destino
-        self._passageiros = passageiros
+        self._numero_passageiros = passageiros
         self._horario_pretendido = horario_pretendido
         self._prioridade = prioridade # Maior valor = maior prioridade (0 a 5)
         self._preferencia_ambiental = preferencia_ambiental
@@ -31,7 +31,7 @@ class Pedido:
 
     def __str__(self) -> str:
         return (f"Pedido #{self.id}: {self.origem} → {self.destino} | "
-                f"{self.passageiros} pax | prioridade {self.prioridade} | "
+            f"{self.numero_passageiros} pax | prioridade {self.prioridade} | "
                 f"estado: {self.estado.name}")
 
     def __eq__(self, other):
@@ -51,8 +51,8 @@ class Pedido:
         return self._destino
 
     @property
-    def passageiros(self) -> int:
-        return self._passageiros
+    def numero_passageiros(self) -> int:
+        return self._numero_passageiros
 
     @property
     def horario_pretendido(self) -> datetime:
@@ -88,7 +88,3 @@ class Pedido:
             raise ValueError("estado deve ser um EstadoPedido")
         self._estado = value
 
-    # -------------------- Helpers --------------------
-    def numero_passageiros(self) -> int:
-        """Convenience para obter número de passageiros."""
-        return self._passageiros
