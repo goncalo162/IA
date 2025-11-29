@@ -129,10 +129,10 @@ run-turbo:
 	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 500.0 --no-display
 
 test:
-	PYTHONPATH=src python -m unittest discover -s tests -p 'test_*.py' -v
+	PYTHONPATH=src pytest -q
 
 test-ridesharing:
-	PYTHONPATH=src python -m unittest tests/test_ridesharing.py -v
+	PYTHONPATH=src pytest -q tests/test_ridesharing.py
 
 
 
