@@ -17,10 +17,10 @@ class Aresta:
         self.m_nome = nome
 
     def __str__(self):
-        return "node " + self.m_name
+        return "node " + self.m_nome
 
     def __repr__(self):
-        return "node " + self.m_name
+        return "node " + self.m_nome
 
     def setNivelTransito(self, transito: NivelTransito):
         self.m_nivelTransito = transito
@@ -45,7 +45,7 @@ class Aresta:
 
     def __eq__(self, other):
         # ver se é preciso tb testar o id....
-        return self.m_name == other.m_name and self.m_nivelTransito == other.m_nivelTransito
+        return self.m_nome == other.m_nome and self.m_nivelTransito == other.m_nivelTransito
 
     def __hash__(self):
-        return hash(self.m_name)
+        return hash(self.m_nome)

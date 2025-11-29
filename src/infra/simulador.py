@@ -1,6 +1,6 @@
 """
 Motor principal da simulação.
-Coorena ambiente, algoritmos, métricas e display.
+Coordena ambiente, algoritmos, métricas e display.
 """
 from typing import Optional, Dict
 from datetime import datetime, timedelta
