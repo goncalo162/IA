@@ -56,6 +56,7 @@ class Simulador:
         self.em_execucao = False
         self.viagens_ativas: Dict = {}
         self.pedidos_agendados = []
+        self._arestas_alteradas = set()  # Arestas alteradas para recálculo de rotas
 
         self._configurar_logging()
 
@@ -121,10 +122,170 @@ class Simulador:
         """
         try:
             nivel_enum = NivelTransito[nivel]
-            return self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
+            sucesso = self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
+            
+            if sucesso:
+                self._log(f"[TRÂNSITO] Aresta '{aresta}' alterada para {nivel}")
+                self._arestas_alteradas.add(aresta) # Marcar aresta para recálculo posterior
+                
+            return sucesso
         except KeyError:
             self._log(f"[AVISO] Nível de trânsito inválido: {nivel}")
             return False
+
+    def _recalcular_rotas_afetadas(self):
+        """
+        Verifica todas as viagens ativas e recalcula as rotas que passam pelas arestas alteradas.
+        Chamado no loop principal após processar eventos.
+        """
+        if not self.viagens_ativas or not self._arestas_alteradas:
+            return
+        
+        total_recalculadas = 0
+        total_viagens_afetadas = 0
+        
+        for aresta in self._arestas_alteradas:
+            for veiculo_id, veiculo in self.viagens_ativas.items():
+                # Verificar se alguma viagem deste veículo passa pela aresta
+                viagens_afetadas = veiculo.viagens_afetadas_por_aresta(aresta, self.ambiente.grafo)
+                
+                if viagens_afetadas:
+                    total_viagens_afetadas += len(viagens_afetadas)
+                    self._log(f"[RECÁLCULO] Veículo {veiculo_id} tem {len(viagens_afetadas)} viagem(ns) afetada(s) por '{aresta}'")
+                    
+                    num_recalculadas = self._recalcular_rotas_veiculo(veiculo, viagens_afetadas)
+                    total_recalculadas += num_recalculadas
+        
+        # Registar evento de recálculo nas métricas
+        if total_viagens_afetadas > 0:
+            self.metricas.registar_evento_recalculo(total_viagens_afetadas)
+        
+        # Limpar lista de arestas alteradas após recálculo
+        self._arestas_alteradas.clear()
+        
+        if total_recalculadas > 0:
+            self._log(f"[RECÁLCULO] Total de {total_recalculadas} rota(s) recalculada(s)")
+
+    #TODO: rever isto _recalcular_rotas_veiculo e talvez arranjar forma mais eficiente de recalcular, por exemplo ir da ultima viagem para a primeira, ate deixar de ser uma viagem com rota afetada, e só recalcular a partir daí
+    #em vez de recalcular todas as viagens afetadas ou não.
+
+    def _recalcular_rotas_veiculo(self, veiculo, viagens_afetadas) -> int:
+        """
+        Recalcula as rotas das viagens afetadas de um veículo.
+        
+        No ride-sharing, todas as viagens ativas partilham a mesma rota base,
+        por isso calculamos uma rota combinada que passa por todos os destinos
+        e depois atualizamos cada viagem com a parte correspondente.
+        """
+        viagens_ativas = [v for v in viagens_afetadas if v.viagem_ativa]
+        if not viagens_ativas:
+            return 0
+        
+        # Obter posição atual do veículo a partir da rota combinada
+        rota_total = veiculo.rota_total_viagens()
+        pos_atual = rota_total[0] if rota_total else None
+        if not pos_atual:
+            return 0
+        
+        # Obter todos os destinos das viagens ativas do veículo (não só as afetadas)
+        todas_viagens_ativas = [v for v in veiculo.viagens if v.viagem_ativa]
+        destinos = [v.destino for v in todas_viagens_ativas if v.destino]
+        
+        if not destinos:
+            return 0
+        
+        # Se só há um destino, calcular rota simples
+        if len(destinos) == 1:
+            # Se já estamos no destino, não há nada a recalcular
+            if pos_atual == destinos[0]:
+                return 0
+            
+            nova_rota = self.navegador.calcular_rota(self.ambiente.grafo, pos_atual, destinos[0])
+            if nova_rota and len(nova_rota) >= 2:
+                viagem = viagens_ativas[0]
+                tempo_anterior = viagem.tempo_restante_horas()
+                distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                
+                if viagem.aplicar_nova_rota(nova_rota, self.ambiente.grafo):
+                    tempo_novo = viagem.tempo_restante_horas()
+                    distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                    delta = (tempo_novo - tempo_anterior) * 60
+                    
+                    # Registar métricas de recálculo
+                    self.metricas.registar_recalculo_rota(
+                        pedido_id=viagem.pedido_id,
+                        veiculo_id=veiculo.id_veiculo,
+                        diferenca_tempo=delta,
+                        motivo="transito",
+                        distancia_anterior=distancia_anterior,
+                        distancia_nova=distancia_nova
+                    )
+                    
+                    self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
+                    return 1
+            return 0
+        
+        # Para ride-sharing com múltiplos destinos: calcular rota combinada
+        # Ordenar destinos por chegada estimada atual para manter a ordem
+        destinos_unicos = list(dict.fromkeys(destinos))  # Remove duplicados mantendo ordem
+        
+        # Calcular rota que passa por todos os destinos na ordem
+        rota_combinada = [pos_atual]
+        ponto_atual = pos_atual
+        
+        for destino in destinos_unicos:
+            if destino == ponto_atual:
+                continue
+            segmento = self.navegador.calcular_rota(self.ambiente.grafo, ponto_atual, destino)
+            if segmento and len(segmento) > 1:
+                rota_combinada.extend(segmento[1:])  # Sem repetir o nó de junção
+                ponto_atual = destino
+        
+        if len(rota_combinada) < 2:
+            return 0
+        
+        # Aplicar a rota apropriada a cada viagem
+        recalculadas = 0
+        for viagem in todas_viagens_ativas:
+            destino_viagem = viagem.destino
+            
+            # Se já estamos no destino desta viagem, não recalcular
+            if destino_viagem == pos_atual:
+                continue
+            
+            if destino_viagem not in rota_combinada:
+                continue
+            
+            # A rota desta viagem vai até ao seu destino
+            idx_destino = rota_combinada.index(destino_viagem)
+            rota_viagem = rota_combinada[:idx_destino + 1]
+            
+            # Garantir que a rota tem pelo menos 2 nós
+            if len(rota_viagem) < 2:
+                continue
+            
+            tempo_anterior = viagem.tempo_restante_horas()
+            distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+            
+            if viagem.aplicar_nova_rota(rota_viagem, self.ambiente.grafo):
+                tempo_novo = viagem.tempo_restante_horas()
+                distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                delta = (tempo_novo - tempo_anterior) * 60
+                
+                # Registar métricas de recálculo
+                self.metricas.registar_recalculo_rota(
+                    pedido_id=viagem.pedido_id,
+                    veiculo_id=veiculo.id_veiculo,
+                    diferenca_tempo=delta,
+                    motivo="transito",
+                    distancia_anterior=distancia_anterior,
+                    distancia_nova=distancia_nova
+                )
+                
+                self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
+                recalculadas += 1
+        
+        return recalculadas
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -182,7 +343,10 @@ class Simulador:
     
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
 
-            # 2. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
+            # 2. Recalcular rotas afetadas por eventos (ex: alterações de trânsito)
+            self._recalcular_rotas_afetadas()
+
+            # 3. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
             restante = tempo_final - self.tempo_simulacao
             passo_atual = self.passo_tempo if self.passo_tempo <= restante else restante
 
@@ -198,20 +362,20 @@ class Simulador:
             except Exception:
                 pass
 
-            # 3. Calcular e aplicar efeitos do passo (atualizar progresso das viagens)
+            # 4. Calcular e aplicar efeitos do passo (atualizar progresso das viagens)
             tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
             self._atualizar_viagens_ativas(tempo_passo_horas)
 
 
-            # 4. Atualizar eventos dinâmicos
+            # 5. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
-            # 5. Atualizar display e métricas
+            # 6. Atualizar display e métricas
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(
                     self.tempo_simulacao, self.viagens_ativas)
 
-            # 6. Sincronizar com tempo real (apenas para velocidades moderadas)
+            # 7. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
                 tempo_decorrido_simulacao += passo_atual
                 tempo_esperado_real = tempo_decorrido_simulacao.total_seconds() / \
@@ -222,7 +386,7 @@ class Simulador:
                 if tempo_espera > 0:
                     time.sleep(tempo_espera)
 
-            # 7. Finalmente, avançar o relógio de simulação (usar passo_atual)
+            # 8. Finalmente, avançar o relógio de simulação (usar passo_atual)
             self.tempo_simulacao += passo_atual
             
 

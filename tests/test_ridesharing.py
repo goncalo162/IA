@@ -5,7 +5,6 @@ from infra.entidades.veiculos import VeiculoCombustao, EstadoVeiculo
 from infra.entidades.pedidos import Pedido
 from infra.entidades.viagem import Viagem
 from infra.gestaoAmbiente import GestaoAmbiente
-from infra.grafo.grafo import Grafo
 
 #TODO: REVER estes testes unitarios
 

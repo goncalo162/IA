@@ -43,7 +43,14 @@ help:
 	@echo "  make clean          - Limpar ficheiros temporários e cache"
 	@echo "  make lint           - Verificar código com flake8"
 	@echo "  make format         - Formatar código com autopep8"
-	@echo "  make test           - Executar testes (se existirem)"
+	@echo "  make test           - Executar todos os testes (rápido)"
+	@echo "  make test-all       - Executar todos os testes (verbose)"
+	@echo "  make test-ridesharing - Testar funcionalidade de ride-sharing"
+	@echo "  make test-transito  - Testar eventos de trânsito"
+	@echo "  make test-recalculo - Testar recálculo de rotas"
+	@echo "  make test-recarga   - Testar sistema de recarga/abastecimento"
+	@echo "  make test-rotas     - Testar cálculo de rotas totais"
+	@echo "  make test-deletion  - Testar remoção ativa de viagens"
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make install        # Primeiro passo: instalar"
@@ -133,10 +140,25 @@ test:
 	PYTHONPATH=src pytest -q
 
 test-ridesharing:
-	PYTHONPATH=src pytest -q tests/test_ridesharing.py
+	PYTHONPATH=src pytest -v tests/test_ridesharing.py
 
 test-transito:
 	PYTHONPATH=src pytest -v tests/test_eventos_transito.py
+
+test-recalculo:
+	PYTHONPATH=src pytest -v tests/test_recalculo_rotas.py
+
+test-recarga:
+	PYTHONPATH=src pytest -v tests/test_recarga.py
+
+test-rotas:
+	PYTHONPATH=src pytest -v tests/test_rota_total_viagens.py
+
+test-deletion:
+	PYTHONPATH=src pytest -v tests/test_simulador_active_deletion.py
+
+test-all:
+	PYTHONPATH=src pytest -v tests/
 
 # Executar usando configurações do ficheiro .env
 run-env:

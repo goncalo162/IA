@@ -82,6 +82,17 @@ class Grafo:
             return random.choice(nodos)
 
         return random.choices(nodos, weights=weights, k=1)[0]
+    
+    def get_nodes_by_tipo(self, tipo: TipoNodo):
+        """Retorna todos os nós de um determinado tipo.
+        
+        Args:
+            tipo: Tipo de nó a procurar (TipoNodo.BOMBA_GASOLINA, TipoNodo.POSTO_CARREGAMENTO, etc.)
+            
+        Returns:
+            Lista de nomes de nós do tipo especificado
+        """
+        return [node.getName() for node in self.m_nodes if node.getTipoNodo() == tipo]
 
     #######################
     # devolver o custo (tempo) de uma aresta
@@ -200,6 +211,56 @@ class Grafo:
                 tempo_total_horas += tempo_segmento
 
         return tempo_total_horas
+    
+    def encontrar_posto_mais_proximo(self, localizacao_atual: str, tipo_posto: TipoNodo, navegador=None):
+        """Encontra o posto de abastecimento/recarga mais próximo.
+        
+        Args:
+            localizacao_atual: Nome do nó onde o veículo está
+            tipo_posto: Tipo de posto (TipoNodo.BOMBA_GASOLINA ou TipoNodo.POSTO_CARREGAMENTO)
+            navegador: Navegador para calcular rotas (se None, usa distância euclidiana aproximada)
+            
+        Returns:
+            Tupla (nome_posto, rota, distancia) ou (None, None, None) se não encontrar
+        """
+        postos = self.get_nodes_by_tipo(tipo_posto)
+        
+        if not postos:
+            return None, None, None
+        
+        # Se já estiver num posto do tipo certo, retornar ele mesmo
+        if localizacao_atual in postos:
+            return localizacao_atual, [localizacao_atual], 0.0
+        
+        melhor_posto = None
+        melhor_rota = None
+        menor_distancia = float('inf')
+        
+        for posto in postos:
+            if navegador:
+                # Usar navegador para calcular rota real
+                rota = navegador.calcular_rota(self, localizacao_atual, posto)
+                if rota:
+                    distancia = self.calcular_distancia_rota(rota)
+                    if distancia < menor_distancia:
+                        menor_distancia = distancia
+                        melhor_posto = posto
+                        melhor_rota = rota
+            else:
+                # Aproximação por distância euclidiana (se tiver coordenadas)
+                node_atual = self.get_node_by_name(localizacao_atual)
+                node_posto = self.get_node_by_name(posto)
+                
+                if node_atual and node_posto and node_atual.getX() is not None and node_posto.getX() is not None:
+                    dx = node_posto.getX() - node_atual.getX()
+                    dy = node_posto.getY() - node_atual.getY()
+                    dist = math.sqrt(dx*dx + dy*dy)
+                    if dist < menor_distancia:
+                        menor_distancia = dist
+                        melhor_posto = posto
+                        melhor_rota = None  # Rota será calculada depois
+        
+        return melhor_posto, melhor_rota, menor_distancia
 
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
