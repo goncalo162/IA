@@ -27,9 +27,19 @@ class Metricas:
         self.tempo_ocupacao_total: float = 0.0  # em minutos
         self.tempo_disponivel_total: float = 0.0  # em minutos
 
+        # Métricas de recálculo de rotas
+        self.recalculos_totais: int = 0  # Total de rotas recalculadas
+        self.tempo_ganho_recalculo: float = 0.0  # Tempo economizado (minutos)
+        self.tempo_perdido_recalculo: float = 0.0  # Tempo perdido (minutos)
+        self.eventos_recalculo: int = 0  # Número de eventos que causaram recálculo
+        self.viagens_afetadas_total: int = 0  # Total de viagens afetadas
+        self.recalculos_por_transito: int = 0  # Recálculos devido a trânsito
+        self.recalculos_por_outros: int = 0  # Recálculos por outros motivos
+
         # Histórico detalhado
         self.historico_pedidos: List[Dict] = []
         self.historico_veiculos: List[Dict] = []
+        self.historico_recalculos: List[Dict] = []  # Histórico de recálculos
 
     def registar_pedido_atendido(self, pedido_id: int, veiculo_id: int,
                                  tempo_resposta: float, distancia: float,
@@ -70,6 +80,52 @@ class Metricas:
         """Regista tempo em que um veículo esteve disponível."""
         self.tempo_disponivel_total += minutos
 
+    def registar_recalculo_rota(self, pedido_id: int, veiculo_id: int, 
+                                diferenca_tempo: float, motivo: str = "transito",
+                                distancia_anterior: float = 0.0, 
+                                distancia_nova: float = 0.0):
+        """Regista um recálculo de rota.
+        
+        Args:
+            pedido_id: ID do pedido/viagem recalculado
+            veiculo_id: ID do veículo
+            diferenca_tempo: Diferença de tempo em minutos (positivo = mais demorado, negativo = mais rápido)
+            motivo: Motivo do recálculo ('transito', 'outro')
+            distancia_anterior: Distância da rota anterior em km
+            distancia_nova: Distância da nova rota em km
+        """
+        self.recalculos_totais += 1
+        
+        if diferenca_tempo > 0:
+            self.tempo_perdido_recalculo += diferenca_tempo
+        else:
+            self.tempo_ganho_recalculo += abs(diferenca_tempo)
+        
+        if motivo == "transito":
+            self.recalculos_por_transito += 1
+        else:
+            self.recalculos_por_outros += 1
+        
+        self.historico_recalculos.append({
+            'pedido_id': pedido_id,
+            'veiculo_id': veiculo_id,
+            'diferenca_tempo_min': diferenca_tempo,
+            'motivo': motivo,
+            'distancia_anterior_km': distancia_anterior,
+            'distancia_nova_km': distancia_nova,
+            'diferenca_distancia_km': distancia_nova - distancia_anterior,
+            'timestamp': datetime.now()
+        })
+
+    def registar_evento_recalculo(self, num_viagens_afetadas: int):
+        """Regista um evento que causou recálculo de rotas.
+        
+        Args:
+            num_viagens_afetadas: Número de viagens afetadas pelo evento
+        """
+        self.eventos_recalculo += 1
+        self.viagens_afetadas_total += num_viagens_afetadas
+
     # -------------------- Cálculos de métricas --------------------
 
     def tempo_resposta_medio(self) -> float:
@@ -104,6 +160,28 @@ class Metricas:
             return 0.0
         return (self.tempo_ocupacao_total / tempo_total) * 100
 
+    def tempo_medio_por_recalculo(self) -> float:
+        """Calcula o impacto médio de tempo por recálculo."""
+        if self.recalculos_totais == 0:
+            return 0.0
+        return (self.tempo_perdido_recalculo - self.tempo_ganho_recalculo) / self.recalculos_totais
+
+    def saldo_tempo_recalculo(self) -> float:
+        """Calcula o saldo total de tempo (ganho - perdido) em minutos."""
+        return self.tempo_ganho_recalculo - self.tempo_perdido_recalculo
+
+    def taxa_recalculo_por_pedido(self) -> float:
+        """Calcula a taxa de recálculos por pedido atendido."""
+        if self.pedidos_atendidos == 0:
+            return 0.0
+        return self.recalculos_totais / self.pedidos_atendidos
+
+    def media_viagens_afetadas_por_evento(self) -> float:
+        """Calcula a média de viagens afetadas por evento de recálculo."""
+        if self.eventos_recalculo == 0:
+            return 0.0
+        return self.viagens_afetadas_total / self.eventos_recalculo
+
     # -------------------- Relatórios e Exportação --------------------
 
     # NOTA: Aqui se calhar depois fazer de outra maneira para juntar com o display
@@ -134,6 +212,22 @@ class Metricas:
         relatorio.append("")
         relatorio.append(
             f"Taxa de ocupação da frota: {self.taxa_ocupacao():.2f}%")
+        relatorio.append("")
+        relatorio.append("--- MÉTRICAS DE RECÁLCULO DE ROTAS ---")
+        relatorio.append(f"Total de recálculos: {self.recalculos_totais}")
+        relatorio.append(f"Eventos que causaram recálculo: {self.eventos_recalculo}")
+        relatorio.append(f"Viagens afetadas no total: {self.viagens_afetadas_total}")
+        relatorio.append(f"Média de viagens/evento: {self.media_viagens_afetadas_por_evento():.2f}")
+        relatorio.append(f"Recálculos por trânsito: {self.recalculos_por_transito}")
+        relatorio.append(f"Recálculos por outros motivos: {self.recalculos_por_outros}")
+        relatorio.append("")
+        relatorio.append(f"Tempo economizado: {self.tempo_ganho_recalculo:.2f} min")
+        relatorio.append(f"Tempo perdido: {self.tempo_perdido_recalculo:.2f} min")
+        saldo = self.saldo_tempo_recalculo()
+        sinal = "+" if saldo >= 0 else ""
+        relatorio.append(f"Saldo líquido: {sinal}{saldo:.2f} min")
+        relatorio.append(f"Impacto médio/recálculo: {self.tempo_medio_por_recalculo():+.2f} min")
+        relatorio.append(f"Taxa recálculos/pedido: {self.taxa_recalculo_por_pedido():.2f}")
         relatorio.append("=" * 60)
 
         return "\n".join(relatorio)
@@ -153,8 +247,22 @@ class Metricas:
                 'emissoes_medias_por_km': self.emissoes_medias_por_km(),
                 'taxa_ocupacao': self.taxa_ocupacao()
             },
+            'recalculos': {
+                'total_recalculos': self.recalculos_totais,
+                'eventos_recalculo': self.eventos_recalculo,
+                'viagens_afetadas': self.viagens_afetadas_total,
+                'media_viagens_por_evento': self.media_viagens_afetadas_por_evento(),
+                'recalculos_transito': self.recalculos_por_transito,
+                'recalculos_outros': self.recalculos_por_outros,
+                'tempo_ganho_min': self.tempo_ganho_recalculo,
+                'tempo_perdido_min': self.tempo_perdido_recalculo,
+                'saldo_tempo_min': self.saldo_tempo_recalculo(),
+                'impacto_medio_min': self.tempo_medio_por_recalculo(),
+                'taxa_recalculos_pedido': self.taxa_recalculo_por_pedido()
+            },
             'historico_pedidos': self.historico_pedidos,
-            'historico_veiculos': self.historico_veiculos
+            'historico_veiculos': self.historico_veiculos,
+            'historico_recalculos': self.historico_recalculos
         }
 
     def exportar_csv(self, ficheiro_csv: str, config: Dict):
@@ -186,7 +294,16 @@ class Metricas:
             'custo_medio_por_km': round(self.custo_medio_por_km(), 3),
             'emissoes_totais': round(self.emissoes_totais, 2),
             'emissoes_medias_por_km': round(self.emissoes_medias_por_km(), 3),
-            'taxa_ocupacao': round(self.taxa_ocupacao(), 2)
+            'taxa_ocupacao': round(self.taxa_ocupacao(), 2),
+            'recalculos_totais': self.recalculos_totais,
+            'eventos_recalculo': self.eventos_recalculo,
+            'viagens_afetadas': self.viagens_afetadas_total,
+            'recalculos_transito': self.recalculos_por_transito,
+            'tempo_ganho_min': round(self.tempo_ganho_recalculo, 2),
+            'tempo_perdido_min': round(self.tempo_perdido_recalculo, 2),
+            'saldo_tempo_min': round(self.saldo_tempo_recalculo(), 2),
+            'impacto_medio_recalculo_min': round(self.tempo_medio_por_recalculo(), 2),
+            'taxa_recalculos_pedido': round(self.taxa_recalculo_por_pedido(), 2)
         }
 
         # Escrever no CSV

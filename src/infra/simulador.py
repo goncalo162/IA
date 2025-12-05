@@ -142,6 +142,7 @@ class Simulador:
             return
         
         total_recalculadas = 0
+        total_viagens_afetadas = 0
         
         for aresta in self._arestas_alteradas:
             for veiculo_id, veiculo in self.viagens_ativas.items():
@@ -149,10 +150,15 @@ class Simulador:
                 viagens_afetadas = veiculo.viagens_afetadas_por_aresta(aresta, self.ambiente.grafo)
                 
                 if viagens_afetadas:
+                    total_viagens_afetadas += len(viagens_afetadas)
                     self._log(f"[RECÁLCULO] Veículo {veiculo_id} tem {len(viagens_afetadas)} viagem(ns) afetada(s) por '{aresta}'")
                     
                     num_recalculadas = self._recalcular_rotas_veiculo(veiculo, viagens_afetadas)
                     total_recalculadas += num_recalculadas
+        
+        # Registar evento de recálculo nas métricas
+        if total_viagens_afetadas > 0:
+            self.metricas.registar_evento_recalculo(total_viagens_afetadas)
         
         # Limpar lista de arestas alteradas após recálculo
         self._arestas_alteradas.clear()
@@ -198,8 +204,23 @@ class Simulador:
             if nova_rota and len(nova_rota) >= 2:
                 viagem = viagens_ativas[0]
                 tempo_anterior = viagem.tempo_restante_horas()
+                distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                
                 if viagem.aplicar_nova_rota(nova_rota, self.ambiente.grafo):
-                    delta = (viagem.tempo_restante_horas() - tempo_anterior) * 60
+                    tempo_novo = viagem.tempo_restante_horas()
+                    distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                    delta = (tempo_novo - tempo_anterior) * 60
+                    
+                    # Registar métricas de recálculo
+                    self.metricas.registar_recalculo_rota(
+                        pedido_id=viagem.pedido_id,
+                        veiculo_id=veiculo.id_veiculo,
+                        diferenca_tempo=delta,
+                        motivo="transito",
+                        distancia_anterior=distancia_anterior,
+                        distancia_nova=distancia_nova
+                    )
+                    
                     self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
                     return 1
             return 0
@@ -244,8 +265,23 @@ class Simulador:
                 continue
             
             tempo_anterior = viagem.tempo_restante_horas()
+            distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+            
             if viagem.aplicar_nova_rota(rota_viagem, self.ambiente.grafo):
-                delta = (viagem.tempo_restante_horas() - tempo_anterior) * 60
+                tempo_novo = viagem.tempo_restante_horas()
+                distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+                delta = (tempo_novo - tempo_anterior) * 60
+                
+                # Registar métricas de recálculo
+                self.metricas.registar_recalculo_rota(
+                    pedido_id=viagem.pedido_id,
+                    veiculo_id=veiculo.id_veiculo,
+                    diferenca_tempo=delta,
+                    motivo="transito",
+                    distancia_anterior=distancia_anterior,
+                    distancia_nova=distancia_nova
+                )
+                
                 self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
                 recalculadas += 1
         
