@@ -1,7 +1,7 @@
 # Makefile para Simulador de Gestão de Frota de Táxis Inteligente
 # Projeto de IA - UMinho 2025
 
-.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo test test-ridesharing run-env
+.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo test test-ridesharing test-transito run-env
 
 # Variáveis
 PYTHON := python
@@ -134,6 +134,9 @@ test:
 
 test-ridesharing:
 	PYTHONPATH=src pytest -q tests/test_ridesharing.py
+
+test-transito:
+	PYTHONPATH=src pytest -v tests/test_eventos_transito.py
 
 # Executar usando configurações do ficheiro .env
 run-env:

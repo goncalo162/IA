@@ -14,6 +14,7 @@ load_dotenv()
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
+from infra.grafo.aresta import NivelTransito
 
 # Constante: velocidade máxima com sincronização em tempo real
 VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA', 100.0))
@@ -83,7 +84,7 @@ class Simulador:
             f.write(mensagem + '\n')
 
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str,
-                       caminho_pedidos: str):
+                       caminho_pedidos: str, caminho_eventos_transito: str = None):
         """Carrega todos os dados necessários para a simulação."""
         self._log(f"A carregar grafo de {caminho_grafo}...")
         self.ambiente.carregar_grafo(caminho_grafo)
@@ -98,6 +99,32 @@ class Simulador:
         self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
+
+        # Carregar eventos de trânsito se o ficheiro for fornecido
+        if caminho_eventos_transito:
+            self._log(f"A carregar eventos de trânsito de {caminho_eventos_transito}...")
+            num_eventos = self.gestor_eventos.carregar_eventos_transito(ficheiro_json=caminho_eventos_transito)
+            self._log(f"  - Eventos de trânsito: {num_eventos}")
+
+
+    def _alterar_transito(self, aresta: str, nivel: str) -> bool:
+        """
+        Altera o nível de trânsito de uma aresta.
+        Callback usado pelo gestor de eventos para manter modularidade.
+        
+        Args:
+            aresta: Nome da aresta a alterar
+            nivel: Nível de trânsito como string (ex: "ELEVADO", "ACIDENTE")
+            
+        Returns:
+            True se alteração bem sucedida, False caso contrário
+        """
+        try:
+            nivel_enum = NivelTransito[nivel]
+            return self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
+        except KeyError:
+            self._log(f"[AVISO] Nível de trânsito inválido: {nivel}")
+            return False
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -128,7 +155,9 @@ class Simulador:
         # Agendar chegada de todos os pedidos
         self._agendar_pedidos()
 
-        # TODO: Iniciar e adicionar outros eventos dinâmicos
+        # Agendar eventos de trânsito 
+        #NOTA: depois se houver mais tipos de eventos, fazer um metodo generico de agendar eventos
+        self._agendar_eventos_transito()
 
         # Loop principal da simulação
         tempo_inicio_real = time.time()
@@ -251,6 +280,14 @@ class Simulador:
             )
 
         self._log(f" {len(pedidos_pendentes)} pedidos agendados\n")
+
+    def _agendar_eventos_transito(self):
+        """Agenda todos os eventos de trânsito carregados."""
+        num_eventos = self.gestor_eventos.agendar_eventos_transito(
+            tempo_inicial=self.tempo_simulacao,
+            callback_alterar_transito=self._alterar_transito
+        )
+        self._log(f"Agendando {num_eventos} eventos de trânsito...")
 
     def _atualizar_viagens_ativas(self, tempo_passo_horas: float = None):
         """Atualiza o progresso de todas as viagens em curso.

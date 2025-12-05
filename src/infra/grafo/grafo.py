@@ -146,6 +146,18 @@ class Grafo:
                 return aresta
         return None
 
+        #nao seria mais facil guardar as arestas num dict com chave o nome da aresta? em vez de percorrer o grafo todo para encontrar a aresta pelo nome
+
+    def getEdgeByName(self, nome_aresta: str):
+        """
+        Devolve o objeto Aresta pelo seu nome. Se não existir, devolve None.
+        """
+        for node_name in self.m_graph:
+            for (dest, aresta) in self.m_graph[node_name]:
+                if aresta.getNome() == nome_aresta:
+                    return aresta
+        return None
+
     ################################
     #  Cálculos auxiliares em rotas
     ################################
@@ -192,6 +204,23 @@ class Grafo:
     ##############################################
     # Importar grafo a partir de um ficheiro JSON
     ##############################################
+
+    def alterarTransitoAresta(self, nome_aresta: str, nivel: NivelTransito) -> bool:
+        """
+        Altera o nível de trânsito de uma aresta pelo seu nome.
+        
+        Args:
+            nome_aresta: Nome da aresta a alterar (ex: "Rua da Sé")
+            nivel: Novo nível de trânsito (NivelTransito enum)
+            
+        Returns:
+            True se a aresta foi encontrada e alterada, False caso contrário.
+        """
+        aresta = self.getEdgeByName(nome_aresta)
+        if aresta:
+            aresta.setNivelTransito(nivel)
+            return True
+        return False
 
     @staticmethod
     def from_json_file(filepath: str):

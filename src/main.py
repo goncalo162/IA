@@ -27,11 +27,13 @@ def main():
     # Verificar se foram passados argumentos via linha de comando ou usar .env
     if len(sys.argv) >= 6:
         caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao, algoritmo_alocacao = sys.argv[1:6]
+        caminho_eventos_transito = os.getenv('CAMINHO_EVENTOS_TRANSITO', 'dataset/eventos_transito.json')
     elif len(sys.argv) == 1:
         # Usar valores do .env
         caminho_grafo = os.getenv('CAMINHO_GRAFO', 'dataset/grafo.json')
         caminho_veiculos = os.getenv('CAMINHO_VEICULOS', 'dataset/veiculos.json')
         caminho_pedidos = os.getenv('CAMINHO_PEDIDOS', 'dataset/pedidos.json')
+        caminho_eventos_transito = os.getenv('CAMINHO_EVENTOS_TRANSITO', 'dataset/eventos_transito.json')
         algoritmo_navegacao = os.getenv('ALGORITMO_NAVEGACAO', 'bfs')
         algoritmo_alocacao = os.getenv('ALGORITMO_ALOCACAO', 'simples')
     else:
@@ -101,7 +103,7 @@ def main():
     if display is not None:
         display.set_metricas(simulador.metricas)
 
-    simulador.carregar_dados(caminho_grafo, caminho_veiculos, caminho_pedidos)
+    simulador.carregar_dados(caminho_grafo, caminho_veiculos, caminho_pedidos, caminho_eventos_transito)
     simulador.executar(duracao_horas=DURACAO_HORAS_DEFAULT)
 
 
