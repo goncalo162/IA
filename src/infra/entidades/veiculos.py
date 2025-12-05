@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
-from infra.entidades.viagem import Viagem
+from infra.entidades.viagem import Viagem, ViagemRecarga
+from infra.grafo.node import TipoNodo
+
 
 class EstadoVeiculo(Enum):
     DISPONIVEL = 1
@@ -14,7 +16,8 @@ class EstadoVeiculo(Enum):
 class Veiculo(ABC):
     def __init__(self, id_veiculo: int, autonomia_maxima: int, autonomia_atual: int,
                  capacidade_passageiros: int, numero_passageiros: int, custo_operacional_km: float,
-                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual=0):
+                 estado: EstadoVeiculo = EstadoVeiculo.DISPONIVEL, localizacao_atual=0,
+                 autonomia_critica_percentual: float = 20.0):
 
         self._id_veiculo = id_veiculo
         self._autonomia_maxima = autonomia_maxima
@@ -25,6 +28,12 @@ class Veiculo(ABC):
         self._estado = estado
         self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
         self.viagens: List[Viagem] = [] # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
+        self.viagem_recarga = None  # Viagem até posto de abastecimento/recarga
+        
+        # Controlo de recarga/abastecimento
+        self._autonomia_critica_percentual = autonomia_critica_percentual  # % mínima de autonomia
+        self._tempo_recarga_inicio = None  # Timestamp de quando iniciou a recarga
+        self._localizacao_abastecimento = None  # Onde está a reabastecer, TODO: REVER, ACHO QUE NAO PRECISA DESTE PARAMETRO
 
         # Dados auxiliares da possível próxima viagem (rota veículo->cliente)
         #TODO: ver onde faz sentido voltar a meter isto a zeros para nao ficar com dados obsoletos (se estiver em andamento por exemplo, e mudar a localiação antes de começar a viagem)
@@ -35,10 +44,101 @@ class Veiculo(ABC):
     def reabastecer(self):
         """Reabastece o veículo, restaurando sua autonomia ao máximo."""
         self.autonomia_atual = self.autonomia_maxima
+        self._tempo_recarga_inicio = None
+        self._localizacao_abastecimento = None
 
     @abstractmethod
     def tempoReabastecimento(self):
         return
+    
+    @abstractmethod
+    def tipo_posto_necessario(self):
+        """Retorna o tipo de posto necessário para este veículo."""
+        return
+    
+    def precisa_reabastecer(self) -> bool:
+        """Verifica se o veículo precisa de recarga/abastecimento.
+        
+        Returns:
+            True se autonomia atual está abaixo do limiar crítico
+        """
+       
+        return self.percentual_autonomia_atual <= self._autonomia_critica_percentual
+    
+    def autonomia_suficiente_para(self, distancia_km: float, margem_seguranca: float = 10.0) -> bool:
+        """Verifica se o veículo tem autonomia suficiente para percorrer uma distância.
+        
+        Args:
+            distancia_km: Distância a percorrer em km
+            margem_seguranca: Margem de segurança adicional em km
+            
+        Returns:
+            True se a autonomia atual é suficiente
+        """
+        return self._autonomia_atual >= (distancia_km + margem_seguranca)
+    
+    def iniciar_recarga(self, tempo_inicio, localizacao: str = None):
+        """Inicia o processo de recarga/abastecimento.
+        
+        Args:
+            tempo_inicio: Timestamp do início da recarga
+            localizacao: Localização onde está a reabastecer
+        """
+        self._estado = EstadoVeiculo.EM_REABASTECIMENTO
+        self._tempo_recarga_inicio = tempo_inicio
+        self._localizacao_abastecimento = localizacao or self._localizacao_atual
+    
+    def iniciar_viagem_recarga(self, rota: list, destino_posto: str, 
+                               distancia: float, tempo_inicio, grafo) -> bool:
+        """Inicia uma viagem até um posto de abastecimento/recarga.
+        
+        Args:
+            rota: Rota até o posto
+            destino_posto: Nome do nó do posto
+            distancia: Distância total até o posto
+            tempo_inicio: Timestamp de início
+            grafo: Grafo do ambiente
+            
+        Returns:
+            True se iniciou com sucesso
+        """
+        if not rota or len(rota) < 2:
+            return False
+        
+        self.viagem_recarga = ViagemRecarga(
+            rota=rota,
+            destino_posto=destino_posto,
+            distancia_total=distancia,
+            tempo_inicio=tempo_inicio,
+            grafo=grafo
+        )
+        self._estado = EstadoVeiculo.EM_ANDAMENTO
+        return True
+    
+    def concluir_viagem_recarga(self):
+        """Finaliza a viagem de recarga quando o veículo chega ao posto."""
+        if self.viagem_recarga:
+            self._localizacao_atual = self.viagem_recarga.destino_posto
+            self.viagem_recarga = None
+    
+    def pode_reabastecer_em(self, localizacao: str, grafo) -> bool:
+        """Verifica se o veículo pode reabastecer na localização atual.
+        
+        Args:
+            localizacao: Nome do nó onde o veículo está
+            grafo: Grafo para verificar tipo de nó
+            
+        Returns:
+            True se a localização é um posto adequado para este tipo de veículo
+        """
+        if not grafo:
+            return False
+        
+        node = grafo.get_node_by_name(localizacao)
+        if not node:
+            return False
+        
+        return node.getTipoNodo() == self.tipo_posto_necessario()
 
     def adicionar_passageiros(self, numero: int):
         """Adiciona passageiros ao veículo, se houver capacidade."""
@@ -192,7 +292,23 @@ class Veiculo(ABC):
         """
         viagens_concluidas: List[Viagem] = []
         distancia_total_avancada = 0.0
+        
+        # Atualizar viagem de recarga se existir
+        if self.viagem_recarga and self.viagem_recarga.viagem_ativa:
+            distancia_antes = self.viagem_recarga.distancia_percorrida
+            concluida = self.viagem_recarga.atualizar_progresso(tempo_decorrido_horas)
+            distancia_depois = self.viagem_recarga.distancia_percorrida
+            distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+            distancia_total_avancada += distancia_avancada
+            
+            # Atualizar localização enquanto viaja
+            if self.viagem_recarga.localizacao_atual:
+                self._localizacao_atual = self.viagem_recarga.localizacao_atual
+            
+            if concluida:
+                self.concluir_viagem_recarga()
 
+        # Atualizar viagens de pedidos
         for v in list(self.viagens):
             if not v.viagem_ativa:
                 continue
@@ -239,6 +355,28 @@ class Veiculo(ABC):
     def progresso_percentual(self) -> List[float]:
         """Retorna o progresso de todas as viagens ativas (0-100)."""
         return [v.progresso_percentual for v in self.viagens if v.viagem_ativa]
+    
+    @property
+    def autonomia_critica_percentual(self) -> float:
+        """Retorna o percentual de autonomia crítica."""
+        return self._autonomia_critica_percentual
+    
+    @property
+    def tempo_recarga_inicio(self):
+        """Retorna o timestamp de início da recarga."""
+        return self._tempo_recarga_inicio
+    
+    @property
+    def localizacao_abastecimento(self) -> str:
+        """Retorna a localização de abastecimento."""
+        return self._localizacao_abastecimento
+    
+    @property
+    def percentual_autonomia_atual(self) -> float:
+        """Retorna o percentual de autonomia atual."""
+        if self._autonomia_maxima == 0:
+            return 0.0
+        return (self._autonomia_atual / self._autonomia_maxima) * 100.0
 
     @property
     def primeiro_destino(self) -> str:
@@ -333,6 +471,11 @@ class VeiculoCombustao(Veiculo):
 
     def tempoReabastecimento(self):
         return 5  # tempo fixo de reabastecimento em minutos, NOTA: pode ser ajustado conforme necessário
+    
+    def tipo_posto_necessario(self):
+        """Veículos a combustão precisam de bomba de gasolina."""
+
+        return TipoNodo.BOMBA_GASOLINA
 
 
 # -------------------- Veículo Elétrico ---------------- #
@@ -349,6 +492,10 @@ class VeiculoEletrico(Veiculo):
         tempo = self.tempo_recarga_km * \
             (self.autonomia_maxima - self.autonomia_atual)
         return tempo
+    
+    def tipo_posto_necessario(self):
+        """Veículos elétricos precisam de postos de carregamento."""
+        return TipoNodo.POSTO_CARREGAMENTO
 
     @property
     def tempo_recarga_km(self) -> int:

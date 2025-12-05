@@ -35,11 +35,19 @@ class Metricas:
         self.viagens_afetadas_total: int = 0  # Total de viagens afetadas
         self.recalculos_por_transito: int = 0  # Recálculos devido a trânsito
         self.recalculos_por_outros: int = 0  # Recálculos por outros motivos
+        
+        # Métricas de recarga/abastecimento
+        self.recargas_totais: int = 0  # Total de recargas realizadas
+        self.tempo_recarga_total: float = 0.0  # Tempo total em recarga (minutos)
+        self.autonomia_recarregada_total: float = 0.0  # Autonomia total recarregada (km)
+        self.recargas_por_veiculo: Dict[int, int] = {}  # Contagem de recargas por veículo
+        self.veiculos_sem_autonomia: int = 0  # Veículos que ficaram sem autonomia
 
         # Histórico detalhado
         self.historico_pedidos: List[Dict] = []
         self.historico_veiculos: List[Dict] = []
         self.historico_recalculos: List[Dict] = []  # Histórico de recálculos
+        self.historico_recargas: List[Dict] = []  # Histórico de recargas
 
     def registar_pedido_atendido(self, pedido_id: int, veiculo_id: int,
                                  tempo_resposta: float, distancia: float,
@@ -125,6 +133,41 @@ class Metricas:
         """
         self.eventos_recalculo += 1
         self.viagens_afetadas_total += num_viagens_afetadas
+    
+    def registar_recarga(self, veiculo_id: int, tempo_recarga: float, 
+                        autonomia_recarregada: float, localizacao: str = None):
+        """Regista uma recarga/abastecimento de veículo.
+        
+        Args:
+            veiculo_id: ID do veículo recarregado
+            tempo_recarga: Tempo gasto em recarga (minutos)
+            autonomia_recarregada: Autonomia recarregada (km)
+            localizacao: Localização onde ocorreu a recarga
+        """
+        self.recargas_totais += 1
+        self.tempo_recarga_total += tempo_recarga
+        self.autonomia_recarregada_total += autonomia_recarregada
+        
+        # Incrementar contador por veículo
+        if veiculo_id not in self.recargas_por_veiculo:
+            self.recargas_por_veiculo[veiculo_id] = 0
+        self.recargas_por_veiculo[veiculo_id] += 1
+        
+        self.historico_recargas.append({
+            'veiculo_id': veiculo_id,
+            'tempo_recarga_min': tempo_recarga,
+            'autonomia_recarregada_km': autonomia_recarregada,
+            'localizacao': localizacao,
+            'timestamp': datetime.now()
+        })
+    
+    def registar_veiculo_sem_autonomia(self, veiculo_id: int):
+        """Regista um veículo que ficou sem autonomia.
+        
+        Args:
+            veiculo_id: ID do veículo sem autonomia
+        """
+        self.veiculos_sem_autonomia += 1
 
     # -------------------- Cálculos de métricas --------------------
 
@@ -181,6 +224,25 @@ class Metricas:
         if self.eventos_recalculo == 0:
             return 0.0
         return self.viagens_afetadas_total / self.eventos_recalculo
+    
+    def tempo_medio_recarga(self) -> float:
+        """Calcula o tempo médio de recarga por veículo."""
+        if self.recargas_totais == 0:
+            return 0.0
+        return self.tempo_recarga_total / self.recargas_totais
+    
+    def recargas_por_pedido(self) -> float:
+        """Calcula a taxa de recargas por pedido atendido."""
+        if self.pedidos_atendidos == 0:
+            return 0.0
+        return self.recargas_totais / self.pedidos_atendidos
+    
+    def percentual_tempo_em_recarga(self) -> float:
+        """Calcula o percentual de tempo gasto em recarga."""
+        tempo_total = self.tempo_ocupacao_total + self.tempo_disponivel_total + self.tempo_recarga_total
+        if tempo_total == 0:
+            return 0.0
+        return (self.tempo_recarga_total / tempo_total) * 100
 
     # -------------------- Relatórios e Exportação --------------------
 
@@ -228,6 +290,16 @@ class Metricas:
         relatorio.append(f"Saldo líquido: {sinal}{saldo:.2f} min")
         relatorio.append(f"Impacto médio/recálculo: {self.tempo_medio_por_recalculo():+.2f} min")
         relatorio.append(f"Taxa recálculos/pedido: {self.taxa_recalculo_por_pedido():.2f}")
+        relatorio.append("")
+        relatorio.append("--- MÉTRICAS DE RECARGA/ABASTECIMENTO ---")
+        relatorio.append(f"Total de recargas: {self.recargas_totais}")
+        relatorio.append(f"Tempo total em recarga: {self.tempo_recarga_total:.2f} min")
+        relatorio.append(f"Tempo médio por recarga: {self.tempo_medio_recarga():.2f} min")
+        relatorio.append(f"Autonomia total recarregada: {self.autonomia_recarregada_total:.2f} km")
+        relatorio.append(f"Recargas por pedido: {self.recargas_por_pedido():.2f}")
+        relatorio.append(f"% tempo em recarga: {self.percentual_tempo_em_recarga():.2f}%")
+        if self.recargas_por_veiculo:
+            relatorio.append(f"Veículos que recarregaram: {len(self.recargas_por_veiculo)}")
         relatorio.append("=" * 60)
 
         return "\n".join(relatorio)
@@ -260,9 +332,20 @@ class Metricas:
                 'impacto_medio_min': self.tempo_medio_por_recalculo(),
                 'taxa_recalculos_pedido': self.taxa_recalculo_por_pedido()
             },
+            'recargas': {
+                'total_recargas': self.recargas_totais,
+                'tempo_total_min': self.tempo_recarga_total,
+                'tempo_medio_min': self.tempo_medio_recarga(),
+                'autonomia_total_km': self.autonomia_recarregada_total,
+                'recargas_por_pedido': self.recargas_por_pedido(),
+                'percentual_tempo_recarga': self.percentual_tempo_em_recarga(),
+                'veiculos_recarregados': len(self.recargas_por_veiculo),
+                'recargas_por_veiculo': self.recargas_por_veiculo
+            },
             'historico_pedidos': self.historico_pedidos,
             'historico_veiculos': self.historico_veiculos,
-            'historico_recalculos': self.historico_recalculos
+            'historico_recalculos': self.historico_recalculos,
+            'historico_recargas': self.historico_recargas
         }
 
     def exportar_csv(self, ficheiro_csv: str, config: Dict):
@@ -303,7 +386,14 @@ class Metricas:
             'tempo_perdido_min': round(self.tempo_perdido_recalculo, 2),
             'saldo_tempo_min': round(self.saldo_tempo_recalculo(), 2),
             'impacto_medio_recalculo_min': round(self.tempo_medio_por_recalculo(), 2),
-            'taxa_recalculos_pedido': round(self.taxa_recalculo_por_pedido(), 2)
+            'taxa_recalculos_pedido': round(self.taxa_recalculo_por_pedido(), 2),
+            'recargas_totais': self.recargas_totais,
+            'tempo_recarga_total_min': round(self.tempo_recarga_total, 2),
+            'tempo_medio_recarga_min': round(self.tempo_medio_recarga(), 2),
+            'autonomia_recarregada_km': round(self.autonomia_recarregada_total, 2),
+            'recargas_por_pedido': round(self.recargas_por_pedido(), 2),
+            'percentual_tempo_recarga': round(self.percentual_tempo_em_recarga(), 2),
+            'veiculos_recarregados': len(self.recargas_por_veiculo)
         }
 
         # Escrever no CSV

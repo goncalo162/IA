@@ -23,6 +23,8 @@ class TipoEvento(Enum):
     FIM_VIAGEM = 7
     CHEGADA_ORIGEM = 8  # Veículo chegou ao cliente
     NECESSITA_RECARGA = 9
+    INICIO_RECARGA = 10  # Início de recarga/abastecimento
+    FIM_RECARGA = 11  # Fim de recarga/abastecimento
 
 
 class Evento:
