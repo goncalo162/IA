@@ -304,6 +304,21 @@ class Veiculo(ABC):
 
         return combinado + nova[max_overlap:]
 
+    def viagens_afetadas_por_aresta(self, nome_aresta: str, grafo) -> List[Viagem]:
+        """Retorna lista de viagens ativas que passam por uma aresta específica.
+        
+        Args:
+            nome_aresta: Nome da aresta a verificar
+            grafo: Grafo para obter informação das arestas
+            
+        Returns:
+            Lista de viagens afetadas pela alteração na aresta
+        """
+        afetadas = []
+        for viagem in self.viagens:
+            if viagem.viagem_ativa and viagem.aresta_na_rota_restante(nome_aresta, grafo):
+                afetadas.append(viagem)
+        return afetadas
 
 
 # -------------------- Veículo a Combustão ---------------- #

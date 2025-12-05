@@ -36,39 +36,59 @@ class Viagem:
         self._viagem_ativa = True
 
         # Pré-calcular informações dos segmentos ao longo da rota completa
-        for i in range(len(self.rota) - 1):
-            origem = self.rota[i]
-            destino = self.rota[i + 1]
+        self.segmentos = self._calcular_segmentos(self.rota, grafo, velocidade_media)
+
+    def _calcular_segmentos(self, rota: List[str], grafo, velocidade_media: float = 50.0) -> List[dict]:
+        """Calcula informações dos segmentos para uma rota.
+        
+        Args:
+            rota: Lista de nós da rota
+            grafo: Grafo do ambiente
+            velocidade_media: Velocidade média de fallback
+            
+        Returns:
+            Lista de dicionários com info de cada segmento
+            
+        Raises:
+            ValueError: Se a rota contém transições sem aresta
+        """
+        segmentos = []
+        for i in range(len(rota) - 1):
+            origem = rota[i]
+            destino = rota[i + 1]
             aresta = grafo.getEdge(origem, destino)
 
             if not aresta:
-                # Num grafo válido, toda transição de rota deve corresponder a uma aresta.
-                # Se não existir, é um erro de construção da rota (ou do grafo).
                 raise ValueError(f"Rota inválida: não existe aresta entre {origem} -> {destino}")
 
             distancia = aresta.getQuilometro()
             velocidade = aresta.getVelocidadeMaxima()
             transito = aresta.getTransito()
 
-            tempo_base_horas = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
-            fator_transito = transito.value if getattr(transito, 'value', None) is not None else 1.0
-            tempo_horas = tempo_base_horas * fator_transito
+            tempo_base = distancia / velocidade if velocidade > 0 else distancia / velocidade_media
+            fator = transito.value if getattr(transito, 'value', None) is not None else 1.0
 
-            self.segmentos.append({
+            segmentos.append({
                 'origem': origem,
                 'destino': destino,
                 'distancia': distancia,
                 'velocidade': velocidade,
-                'tempo_horas': tempo_horas
+                'tempo_horas': tempo_base * fator
             })
+        return segmentos
 
     def atualizar_progresso(self, tempo_decorrido_horas: float) -> bool:
         """
         Atualiza as físicas do progresso da viagem baseado no tempo decorrido.
         Retorna True se a viagem foi concluída.
         """
-        if not self._viagem_ativa or not self.segmentos:
+        if not self._viagem_ativa:
             return False
+        
+        # Se não há segmentos restantes, a viagem está concluída
+        if not self.segmentos or self.indice_segmento_atual >= len(self.segmentos):
+            self._viagem_ativa = False
+            return True
 
         tempo_restante = tempo_decorrido_horas
 
@@ -157,3 +177,66 @@ class Viagem:
         idx = self.indice_segmento_atual
         idx = max(0, min(idx, len(rota) - 1))
         return rota[idx:]
+
+    def aresta_na_rota_restante(self, nome_aresta: str, grafo) -> bool:
+        """Verifica se uma aresta específica está na rota restante da viagem.
+        
+        Args:
+            nome_aresta: Nome da aresta a verificar
+            grafo: Grafo para obter informação das arestas
+            
+        Returns:
+            True se a aresta está na rota restante, False caso contrário
+        """
+        rota = self.rota_restante()
+        if len(rota) < 2:
+            return False
+        
+        for i in range(len(rota) - 1):
+            aresta = grafo.getEdge(rota[i], rota[i + 1])
+            if aresta and aresta.getNome() == nome_aresta:
+                return True
+        return False
+
+    def posicao_atual(self) -> Optional[str]:
+        """Retorna a posição atual do veículo na rota (nó atual ou mais recente)."""
+        if not self.rota:
+            return None
+        idx = min(self.indice_segmento_atual, len(self.rota) - 1)
+        return self.rota[idx]
+
+    def aplicar_nova_rota(self, nova_rota: List[str], grafo) -> bool:
+        """Aplica uma nova rota à viagem a partir da posição atual.
+        
+        Args:
+            nova_rota: Nova rota calculada (da posição atual ao destino)
+            grafo: Grafo do ambiente
+            
+        Returns:
+            True se a rota foi aplicada com sucesso, False caso contrário
+        """
+        if not self._viagem_ativa or not nova_rota:
+            return False
+        
+        try:
+            novos_segmentos = self._calcular_segmentos(nova_rota, grafo)
+        except ValueError:
+            return False
+        
+        # Manter a parte já percorrida + nova rota
+        rota_percorrida = self.rota[:self.indice_segmento_atual] if self.indice_segmento_atual > 0 else []
+        self.rota = rota_percorrida + nova_rota
+        
+        # Atualizar segmentos
+        self.segmentos = self.segmentos[:self.indice_segmento_atual] + novos_segmentos
+        self.distancia_no_segmento = 0.0
+        
+        # Recalcular distâncias
+        nova_distancia = sum(seg['distancia'] for seg in novos_segmentos)
+        self.distancia_total = self.distancia_percorrida + nova_distancia
+        
+        return True
+
+    def tempo_restante_horas(self) -> float:
+        """Retorna o tempo estimado restante em horas."""
+        return sum(seg['tempo_horas'] for seg in self.segmentos[self.indice_segmento_atual:])
