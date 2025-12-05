@@ -9,6 +9,7 @@ class FakeVeiculo:
         self._id = vid
         self._concluded_counts = list(concluded_counts)
         self._active = True
+        self.viagem_recarga = None  # Simular atributo para compatibilidade
 
     @property
     def id_veiculo(self):
