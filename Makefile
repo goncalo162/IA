@@ -1,7 +1,7 @@
 # Makefile para Simulador de Gestão de Frota de Táxis Inteligente
 # Projeto de IA - UMinho 2025
 
-.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo run-fast run-ultra
+.PHONY: help install run clean test lint format check run-1 run-10 run-60 run-turbo test test-ridesharing test-transito run-env
 
 # Variáveis
 PYTHON := python
@@ -39,6 +39,7 @@ help:
 	@echo "  make run-turbo      - Executar com velocidade 100x"
 	@echo "  make run-fast       - Executar sem display, velocidade 500x (muito rápido)"
 	@echo "  make run-ultra      - Executar sem display, velocidade 5000x (ultra rápido)"
+	@echo "  make run-env        - Executar usando configurações do ficheiro .env"
 	@echo "  make clean          - Limpar ficheiros temporários e cache"
 	@echo "  make lint           - Verificar código com flake8"
 	@echo "  make format         - Formatar código com autopep8"
@@ -128,8 +129,19 @@ run-turbo:
 	@echo "A executar simulação SEM DISPLAY com navegação $(ALGO) e alocação $(ALGO_ALOC) a velocidade 500x (muito rápido)..."
 	$(PYTHON) $(SRC)/main.py $(DATASET)/grafo.json $(DATASET)/veiculos.json $(DATASET)/pedidos.json $(ALGO) $(ALGO_ALOC) 500.0 --no-display
 
+test:
+	PYTHONPATH=src pytest -q
 
+test-ridesharing:
+	PYTHONPATH=src pytest -q tests/test_ridesharing.py
 
+test-transito:
+	PYTHONPATH=src pytest -v tests/test_eventos_transito.py
+
+# Executar usando configurações do ficheiro .env
+run-env:
+	@echo "A executar simulação usando configurações do ficheiro .env..."
+	$(PYTHON) $(SRC)/main.py
 
 
 

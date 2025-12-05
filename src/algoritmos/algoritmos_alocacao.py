@@ -31,6 +31,10 @@ class AlocadorSimples(AlocadorBase):
             if not self._verificar_capacidade(v, pedido):
                 continue
 
+            # Só considerar veículos em andamento que passarão pela origem
+            if not self._veiculo_passa_pela_origem(v, pedido, grafo):
+                continue
+
             # Determinar origem do veículo em nome de nó
             if isinstance(v.localizacao_atual, str):
                 origem_veiculo_nome = v.localizacao_atual
@@ -104,6 +108,10 @@ class AlocadorHeuristico(AlocadorBase):
 
             # 1 — verificar capacidade
             if not self._verificar_capacidade(v, pedido):
+                continue
+
+            # Centralizar lógica: só considerar veículos em andamento que passarão pela origem
+            if not self._veiculo_passa_pela_origem(v, pedido, grafo):
                 continue
 
             # 2 — converter nome/localização

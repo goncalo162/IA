@@ -8,7 +8,8 @@
       "horario_pretendido": "2025-01-01T08:01:00",
       "prioridade": 2,
       "preferencia_ambiental": 1,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 2,
@@ -18,7 +19,8 @@
       "horario_pretendido": "2025-01-01T08:01:30",
       "prioridade": 1,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 3,
@@ -28,7 +30,8 @@
       "horario_pretendido": "2025-01-01T08:02:00",
       "prioridade": 3,
       "preferencia_ambiental": 1,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": false
     },
     {
       "pedido_id": 4,
@@ -38,7 +41,8 @@
       "horario_pretendido": "2025-01-01T08:02:30",
       "prioridade": 1,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 5,
@@ -48,7 +52,8 @@
       "horario_pretendido": "2025-01-01T12:30:00",
       "prioridade": 2,
       "preferencia_ambiental": 1,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": false
     },
     {
       "pedido_id": 6,
@@ -58,7 +63,8 @@
       "horario_pretendido": "2025-01-01T14:00:00",
       "prioridade": 1,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 7,
@@ -68,7 +74,8 @@
       "horario_pretendido": "2025-01-01T15:30:00",
       "prioridade": 2,
       "preferencia_ambiental": 1,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 8,
@@ -78,7 +85,8 @@
       "horario_pretendido": "2025-01-01T16:45:00",
       "prioridade": 3,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": false
     }
 ,
     {
@@ -89,7 +97,8 @@
       "horario_pretendido": "2025-01-01T08:05:00",
       "prioridade": 1,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": true
     },
     {
       "pedido_id": 9,
@@ -99,7 +108,8 @@
       "horario_pretendido": "2025-01-01T08:05:00",
       "prioridade": 5,
       "preferencia_ambiental": 0,
-      "estado": "PENDENTE"
+      "estado": "PENDENTE",
+      "ride_sharing": false
     }
   ]
 }

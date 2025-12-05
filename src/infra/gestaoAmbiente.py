@@ -4,13 +4,13 @@ Contém o grafo da cidade, frota de veículos e pedidos.
 """
 
 import json
-import random
 from typing import Dict, List, Optional
 from datetime import datetime
 
 from infra.grafo.grafo import Grafo
 from infra.entidades.veiculos import Veiculo, VeiculoCombustao, VeiculoEletrico, EstadoVeiculo
 from infra.entidades.pedidos import Pedido, EstadoPedido
+from infra.entidades.viagem import Viagem
 
 
 class GestaoAmbiente:
@@ -90,7 +90,8 @@ class GestaoAmbiente:
                 passageiros=p_data['passageiros'],
                 horario_pretendido=horario,
                 prioridade=p_data.get('prioridade', 1),
-                preferencia_ambiental=p_data.get('preferencia_ambiental', 0)
+                preferencia_ambiental=p_data.get('preferencia_ambiental', 0),
+                ride_sharing=p_data.get('ride_sharing', False)
             )
             pedido._estado = estado
             self._pedidos[pedido.id] = pedido
@@ -112,6 +113,15 @@ class GestaoAmbiente:
         """Retorna apenas veículos disponíveis."""
         return [v for v in self._veiculos.values()
                 if v.estado == EstadoVeiculo.DISPONIVEL]
+
+    def listar_veiculos_ridesharing(self) -> List[Veiculo]:
+        """Retorna veículos elegíveis para ride-sharing:
+        - Veículos disponíveis
+        - Veículos em andamento onde TODOS os pedidos das viagens ativas permitem ride-sharing
+        """
+        return [v for v in self._veiculos.values()
+                if v.estado in (EstadoVeiculo.DISPONIVEL, EstadoVeiculo.EM_ANDAMENTO)
+                and v.aceita_ridesharing]
 
     def remover_veiculo(self, id_veiculo: int) -> Optional[Veiculo]:
         """Remove um veículo da frota pelo ID."""
@@ -153,36 +163,59 @@ class GestaoAmbiente:
 
         pedido.atribuir_a = veiculo.id_veiculo
         pedido.estado = pedido.estado.EM_CURSO
-        # talvez aqui meter indisponivel e passar para em adamento em comecar_viagem
         veiculo.estado = veiculo.estado.EM_ANDAMENTO
 
         return True
 
-    def concluir_pedido(self, pedido_id: int) -> bool:
-        pedido = self.obter_pedido(pedido_id)
+    def iniciar_viagem(self, pedido: Pedido, veiculo: Veiculo,
+                       rota_ate_cliente: List[str], rota_pedido: List[str],
+                       distancia_ate_cliente: float, distancia_pedido: float,
+                       tempo_inicio, velocidade_media: float = 50.0) -> bool:
+        """Inicia uma nova viagem no veículo e regista como ativa no ambiente."""
+        iniciou = veiculo.iniciar_viagem(
+            pedido=pedido,
+            rota_ate_cliente=rota_ate_cliente,
+            rota_pedido=rota_pedido,
+            distancia_ate_cliente=distancia_ate_cliente,
+            distancia_pedido=distancia_pedido,
+            tempo_inicio=tempo_inicio,
+            grafo=self.grafo,
+            velocidade_media=velocidade_media,
+        )
+        return iniciou
+
+    def marcar_pedido_concluido(self, pedido: Pedido) -> bool:
+        """Marca um pedido como concluído (sem manipular viagens diretamente)."""
         if pedido is None:
+            return False
+        pedido.estado = pedido.estado.CONCLUIDO
+        return True
+    
+    def concluir_pedido(self, pedido_id: int, viagem: Viagem) -> bool:
+        """Marca um pedido como concluído e atualiza o veículo associado.
+        """
+        pedido = self.obter_pedido(pedido_id)
+        if pedido is None or pedido.atribuir_a is None:
             return False
 
         veiculo = self.obter_veiculo(pedido.atribuir_a)
-        if veiculo:
-            veiculo.concluir_viagem(pedido.destino)
-        pedido.estado = pedido.estado.CONCLUIDO
+        if veiculo is None:
+            return False
+
+        self.marcar_pedido_concluido(pedido)
+        veiculo.concluir_viagem(viagem)
         return True
 
     # -------------------- Cálculos Auxiliares --------------------
 
-    # nota: ver se é necessário ou usamos diretamente do grafo
     def _calcular_distancia_rota(self, rota) -> float:
-        """Wrapper para cálculo de distância delegando no grafo."""
-
+        """Cálculo de distância delegando no grafo."""
         if not self.grafo:
             return 0.0
         return self.grafo.calcular_distancia_rota(rota)
 
-    # nota: ver se é necessário ou usamos diretamente do grafo
     def _calcular_tempo_rota(self, rota) -> float:
-        """Wrapper para cálculo de tempo delegando no grafo."""
-
+        """Cálculo de tempo delegando no grafo."""
         if not self.grafo:
             return 0.0
         return self.grafo.calcular_tempo_rota(rota)
@@ -192,7 +225,7 @@ class GestaoAmbiente:
         if isinstance(veiculo, VeiculoEletrico):
             return 0.0
         else:
-            return distancia * 0.12
+            return distancia * 0.12 #NOTA: valor fictício de emissões por km para veículos a combustão pode ser ajustado conforme necessário
         
     def getRandomNodePair(self):
         inicio = self.grafo.getRandomNodo()

@@ -52,9 +52,6 @@ class NavegadorBFS(NavegadorBase):
     BFS garante o caminho com menor número de arestas (não necessariamente o mais curto em distância).
     """
 
-    def nome_algoritmo(self) -> str:
-        return "BFS"
-
     def bfs(self, grafo: Grafo, origem: str, destino: str):
         if origem == destino:
             return [origem]
@@ -94,6 +91,8 @@ class NavegadorCustoUniforme(NavegadorBase):
     """
 
     def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+        if origem == destino:
+            return [origem]
 
         # Fila de prioridade com tuplos (custo acumulado, nó atual, caminho)
         fronteira = [(0.0, origem, [origem])]
@@ -111,14 +110,12 @@ class NavegadorCustoUniforme(NavegadorBase):
                 continue
 
             # Percorrer todas as arestas que saem do nó atual
+            # getNeighbours retorna lista de tuplos (nome_vizinho, aresta)
             vizinhos = grafo.getNeighbours(no_atual)
             if vizinhos is None:
                 continue
 
-            for aresta in vizinhos:
-
-                no_destino = aresta["destino"]
-
+            for (no_destino, aresta) in vizinhos:
                 if veiculo is None:
                     custo_aresta = self.funcao_custo.custo_aresta(aresta)
                 else:
@@ -156,6 +153,8 @@ class NavegadorAEstrela(NavegadorBase):
         return "A* Informed"
 
     def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+        if origem == destino:
+            return [origem]
 
         # Priority queue storing (f(n), g(n), node, path)
         fronteira = []
@@ -182,9 +181,8 @@ class NavegadorAEstrela(NavegadorBase):
                 return caminho
 
             # Expandir vizinhos
-            for aresta in grafo.getNeighbours(no_atual):
-                no_vizinho = aresta["destino"]
-
+            # getNeighbours retorna lista de tuplos (nome_vizinho, aresta)
+            for (no_vizinho, aresta) in grafo.getNeighbours(no_atual):
                 # custo da aresta (pode depender do veículo)
                 custo_aresta = self.funcao_custo.custo_aresta(aresta, veiculo)
                 custoAcumulado_novo = custoAcumulado_atual + custo_aresta

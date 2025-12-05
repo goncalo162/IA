@@ -6,15 +6,18 @@ from typing import Optional, Dict
 from datetime import datetime, timedelta
 import os
 import time
-import random
-import threading
+from dotenv import load_dotenv
 from infra.simuladorDinamico import SimuladorDinamico
+
+# Carregar variáveis de ambiente
+load_dotenv()
 from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
+from infra.grafo.aresta import NivelTransito
 
 # Constante: velocidade máxima com sincronização em tempo real
-VELOCIDADE_MAXIMA_SINCRONIZADA = 100.0
+VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA', 100.0))
 
 
 class Simulador:
@@ -38,7 +41,11 @@ class Simulador:
         self.ambiente = GestaoAmbiente()
         self.metricas = Metricas()
         self.gestor_eventos = GestorEventos()
-        self.simuladorDinamico = SimuladorDinamico(0.4, 0.3)
+        
+        # Carregar configurações do simulador dinâmico do .env
+        chance_troca_tempo = float(os.getenv('CHANCE_TROCA_TEMPO', 0.4))
+        chance_pedido_aleatorio = float(os.getenv('CHANCE_PEDIDO_ALEATORIO', 0.3))
+        self.simuladorDinamico = SimuladorDinamico(chance_troca_tempo, chance_pedido_aleatorio)
         
         self.tempo_simulacao = tempo_inicial or datetime.now()
         self.velocidade_simulacao = velocidade_simulacao
@@ -77,7 +84,7 @@ class Simulador:
             f.write(mensagem + '\n')
 
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str,
-                       caminho_pedidos: str):
+                       caminho_pedidos: str, caminho_eventos_transito: str = None):
         """Carrega todos os dados necessários para a simulação."""
         self._log(f"A carregar grafo de {caminho_grafo}...")
         self.ambiente.carregar_grafo(caminho_grafo)
@@ -92,6 +99,32 @@ class Simulador:
         self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
         self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
         self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
+
+        # Carregar eventos de trânsito se o ficheiro for fornecido
+        if caminho_eventos_transito:
+            self._log(f"A carregar eventos de trânsito de {caminho_eventos_transito}...")
+            num_eventos = self.gestor_eventos.carregar_eventos_transito(ficheiro_json=caminho_eventos_transito)
+            self._log(f"  - Eventos de trânsito: {num_eventos}")
+
+
+    def _alterar_transito(self, aresta: str, nivel: str) -> bool:
+        """
+        Altera o nível de trânsito de uma aresta.
+        Callback usado pelo gestor de eventos para manter modularidade.
+        
+        Args:
+            aresta: Nome da aresta a alterar
+            nivel: Nível de trânsito como string (ex: "ELEVADO", "ACIDENTE")
+            
+        Returns:
+            True se alteração bem sucedida, False caso contrário
+        """
+        try:
+            nivel_enum = NivelTransito[nivel]
+            return self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
+        except KeyError:
+            self._log(f"[AVISO] Nível de trânsito inválido: {nivel}")
+            return False
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -108,7 +141,7 @@ class Simulador:
 
         if self.velocidade_simulacao > VELOCIDADE_MAXIMA_SINCRONIZADA:
             self._log(
-                f"⚡ MODO TURBO ATIVADO: Velocidade > {VELOCIDADE_MAXIMA_SINCRONIZADA}x")
+                f" MODO TURBO ATIVADO: Velocidade > {VELOCIDADE_MAXIMA_SINCRONIZADA}x")
 
         self._log(f"Frequência de cálculo: {self.frequencia_calculo} Hz")
         self._log(
@@ -122,7 +155,9 @@ class Simulador:
         # Agendar chegada de todos os pedidos
         self._agendar_pedidos()
 
-        # TODO: Iniciar e adicionar outros eventos dinâmicos
+        # Agendar eventos de trânsito 
+        #NOTA: depois se houver mais tipos de eventos, fazer um metodo generico de agendar eventos
+        self._agendar_eventos_transito()
 
         # Loop principal da simulação
         tempo_inicio_real = time.time()
@@ -246,6 +281,14 @@ class Simulador:
 
         self._log(f" {len(pedidos_pendentes)} pedidos agendados\n")
 
+    def _agendar_eventos_transito(self):
+        """Agenda todos os eventos de trânsito carregados."""
+        num_eventos = self.gestor_eventos.agendar_eventos_transito(
+            tempo_inicial=self.tempo_simulacao,
+            callback_alterar_transito=self._alterar_transito
+        )
+        self._log(f"Agendando {num_eventos} eventos de trânsito...")
+
     def _atualizar_viagens_ativas(self, tempo_passo_horas: float = None):
         """Atualiza o progresso de todas as viagens em curso.
 
@@ -262,21 +305,24 @@ class Simulador:
         viagens_concluidas = []
 
         for veiculo_id, veiculo in list(self.viagens_ativas.items()):
-            concluiu = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            for v in concluidas:
+                viagens_concluidas.append((veiculo_id, veiculo, v))
 
-            if concluiu:
-                viagens_concluidas.append((veiculo_id, veiculo))
+        # Processar viagens concluídas (por viagem específica)
+        for veiculo_id, veiculo, viagem in viagens_concluidas:
+            self._concluir_viagem(veiculo, viagem)
+            # Remover veículo da lista ativa apenas se não houver mais viagens ativas
+            if not veiculo.viagem_ativa and veiculo_id in self.viagens_ativas: #REVER ISTO porque sem a segunda condição nao funciona sempre, mas devia, ou seja, pode estar a apagar em sitios que nao devia
+                    del self.viagens_ativas[veiculo_id]
 
-        # Processar viagens concluídas
-        for veiculo_id, veiculo in viagens_concluidas:
-            self._concluir_viagem(veiculo)
-            del self.viagens_ativas[veiculo_id]
+    def _concluir_viagem(self, veiculo, viagem):
+        """Processa a conclusão de uma viagem específica em um veículo."""
+        pedido_id = viagem.pedido_id
 
-    def _concluir_viagem(self, veiculo):
-        """Processa a conclusão de uma viagem."""
-        self.ambiente.concluir_pedido(veiculo.pedido_id)
+        self.ambiente.concluir_pedido(pedido_id, viagem)
 
-        log_msg = f"[green][/] Viagem concluída: Pedido #{veiculo.pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
+        log_msg = f"[green][/] Viagem concluída: Pedido #{pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
 
     def _processar_pedido(self, pedido):
@@ -310,9 +356,14 @@ class Simulador:
         # so depois calcular a rota do carro escolhido ate ao inicio do pedido.
 
         # 2. Escolher veículo considerando autonomia e rota até cliente
+        # Escolher a lista de veículos apropriada (ride-sharing inclui em andamento)
+        lista_veiculos = (self.ambiente.listar_veiculos_ridesharing()
+                          if pedido.ride_sharing
+                          else self.ambiente.listar_veiculos_disponiveis())
+
         veiculo = self.alocador.escolher_veiculo(
             pedido=pedido,
-            veiculos_disponiveis=self.ambiente.listar_veiculos_disponiveis(),
+            veiculos_disponiveis=lista_veiculos,
             grafo=self.ambiente.grafo,
             rota_pedido=rota_viagem,
             distancia_pedido=distancia_viagem,
@@ -331,6 +382,45 @@ class Simulador:
         self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
 
         # TODO: decidir se as localizações são nomes ou IDs
+        #TODO: REVER ISTO TUDO ABAIXO
+
+        # Ajuste de rotas para ride-sharing sem desvios:
+
+        #todo: rever se queremos sem desvios ou se pode fazer desvios e tem que recalcular a rota
+        # Se o veículo já tem viagens ativas, a rota do pedido deve iniciar
+        # coincidente com o plano atual do veículo e só depois estender até ao destino.
+        if pedido.ride_sharing and veiculo.estado == veiculo.estado.EM_ANDAMENTO:
+            try:
+                rota_total = veiculo.rota_total_viagens()
+            except Exception:
+                rota_total = []
+
+            if rota_total and origem_pedido_nome in rota_total:
+                idx_origem = rota_total.index(origem_pedido_nome)
+                # veículo -> cliente: do início do plano até à origem (inclui a origem)
+                nova_rota_ate_cliente = rota_total[:idx_origem+1]
+
+                # cliente -> destino: seguir o plano e, se necessário, estender até ao destino
+                tail = rota_total[idx_origem:]
+                if destino_nome in tail:
+                    dest_idx = tail.index(destino_nome)
+                    nova_rota_viagem = tail[:dest_idx+1]
+                else:
+                    rota_extra = self.navegador.calcular_rota(
+                        grafo=self.ambiente.grafo,
+                        origem=tail[-1],
+                        destino=destino_nome
+                    )
+                    if rota_extra and len(rota_extra) > 0:
+                        nova_rota_viagem = tail + (rota_extra[1:] if len(rota_extra) > 1 else [])
+                    else:
+                        nova_rota_viagem = rota_viagem  # fallback se não houver rota de extensão
+
+                # Atualizar distâncias e valores utilizados adiante
+                veiculo.rota_ate_cliente = nova_rota_ate_cliente
+                veiculo.distancia_ate_cliente = self.ambiente._calcular_distancia_rota(nova_rota_ate_cliente)
+                rota_viagem = nova_rota_viagem
+                distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
 
         # 3. Recuperar rota veículo -> cliente e distância calculadas pelo alocador
         rota_ate_cliente = veiculo.rota_ate_cliente
@@ -355,8 +445,8 @@ class Simulador:
             f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
 
         # 5. Iniciar viagem
-        veiculo.iniciar_viagem(
-            pedido_id=pedido.id,
+        iniciou = veiculo.iniciar_viagem(
+            pedido=pedido,
             rota_ate_cliente=rota_ate_cliente,
             rota_pedido=rota_viagem,
             distancia_ate_cliente=distancia_ate_cliente,
@@ -364,6 +454,14 @@ class Simulador:
             tempo_inicio=self.tempo_simulacao,
             grafo=self.ambiente.grafo
         )
+        if not iniciou:
+            self._log(
+                f"  [yellow][/] Capacidade excedida para ride-sharing no veículo {veiculo.id_veiculo}")
+            self.metricas.registar_pedido_rejeitado(
+                pedido.id, "Capacidade ride-sharing excedida")
+            if self.display and hasattr(self.display, 'registrar_rejeicao'):
+                self.display.registrar_rejeicao()
+            return
 
         self.viagens_ativas[veiculo.id_veiculo] = veiculo
 
@@ -382,4 +480,6 @@ class Simulador:
 
         # Atualizar displays
         if self.display:
-            self.display.atualizar(pedido, veiculo, veiculo.viagem.rota)
+            # Atualizar display com a rota desta nova viagem
+            nova_viagem_rota = veiculo.viagens[-1].rota if veiculo.viagens else []
+            self.display.atualizar(pedido, veiculo, nova_viagem_rota)

@@ -61,6 +61,36 @@ class CustoDefault(FuncaoCusto):
             return 0.0
 
 
+class CustoTempoPercurso(FuncaoCusto):
+    """Custo baseado no tempo de percurso, tendo em conta o trânsito.
+
+    Usa `aresta.getTempoPercorrer()` que considera o nível de trânsito.
+    Arestas com acidente (retornam None) são penalizadas com custo infinito.
+    """
+
+    def custo_rota(self, grafo, rota: List[str], veiculo: Optional[object] = None) -> float:
+        tempo_total = 0.0
+        if not rota or len(rota) < 2:
+            return 0.0
+        for i in range(len(rota) - 1):
+            aresta = grafo.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                custo = self.custo_aresta(aresta, veiculo)
+                if custo == float('inf'):
+                    return float('inf')  # Rota impossível devido a acidente
+                tempo_total += custo
+        return tempo_total
+
+    def custo_aresta(self, aresta, veiculo: Optional[object] = None) -> float:
+        try:
+            tempo = aresta.getTempoPercorrer()
+            if tempo is None:  # Acidente na aresta
+                return float('inf')
+            return float(tempo)
+        except Exception:
+            return 0.0
+
+
 class ZeroHeuristica(Heuristica):
     """Heurística neutra (retorna zero)."""
 

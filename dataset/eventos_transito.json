@@ -1,0 +1,61 @@
+{
+  "descricao": "Eventos de trânsito pré-definidos para a simulação. Tempos são relativos ao início da simulação.",
+  "eventos": [
+    {
+      "minuto_simulacao": 5,
+      "aresta": "Av. da Liberdade",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Hora de ponta matinal na Avenida da Liberdade"
+    },
+    {
+      "minuto_simulacao": 10,
+      "aresta": "Rua da Sé",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 20,
+      "descricao": "Trânsito aumentado no centro histórico"
+    },
+    {
+      "minuto_simulacao": 15,
+      "aresta": "IC14",
+      "nivel": "ACIDENTE",
+      "duracao_minutos": 45,
+      "descricao": "Acidente no IC14 - via bloqueada"
+    },
+    {
+      "minuto_simulacao": 30,
+      "aresta": "Av. João XXI",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 25,
+      "descricao": "Congestionamento na Av. João XXI"
+    },
+    {
+      "minuto_simulacao": 60,
+      "aresta": "Av. da Liberdade",
+      "nivel": "NORMAL",
+      "duracao_minutos": null,
+      "descricao": "Trânsito normalizado após hora de ponta"
+    },
+    {
+      "minuto_simulacao": 90,
+      "aresta": "EN101",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 40,
+      "descricao": "Obras na EN101"
+    },
+    {
+      "minuto_simulacao": 120,
+      "aresta": "Rua do Souto",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Zona pedonal com restrições"
+    },
+    {
+      "minuto_simulacao": 180,
+      "aresta": "Av. Hospital",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 60,
+      "descricao": "Trânsito aumentado junto ao Hospital"
+    }
+  ]
+}
