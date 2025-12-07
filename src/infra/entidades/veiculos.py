@@ -155,6 +155,15 @@ class Veiculo(ABC):
         """Reduz a autonomia atual de acordo com a distância percorrida"""
         self.autonomia_atual = max(0, self.autonomia_atual - km_percorridos)  # Evita autonomia negativa
 
+    def destinos_viagens_ativas(self) -> List[str]:
+        """Retorna lista de destinos das viagens ativas."""
+        destinos = []
+        for v in self.viagens:
+            if v.viagem_ativa and v.destino is not None:
+                destinos.append(v.destino)
+        return destinos
+
+
     def __str__(self):
         return (f"{self.__class__.__name__} [{self.id_veiculo}] | "
                 f"Autonomia: {self.autonomia_atual}/{self.autonomia_maxima} km | "
@@ -213,8 +222,10 @@ class Veiculo(ABC):
 
     @property
     def viagem_ativa(self):
-        """Indica se há alguma viagem ativa neste veículo."""
-        return any(v.viagem_ativa for v in self.viagens)
+        """Indica se há alguma viagem ativa neste veículo (pedidos ou recarga)."""
+        tem_viagem_pedido = any(v.viagem_ativa for v in self.viagens)
+        tem_viagem_recarga = self.viagem_recarga is not None and self.viagem_recarga.viagem_ativa
+        return tem_viagem_pedido or tem_viagem_recarga
 
     @property
     def aceita_ridesharing(self) -> bool:
@@ -285,14 +296,17 @@ class Veiculo(ABC):
         self.estado = EstadoVeiculo.EM_ANDAMENTO
         return True
 
-    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> List[Viagem]:
+    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float):
         """Atualiza o progresso de todas as viagens ativas e autonomia proporcional.
 
         Retorna lista de viagens concluídas neste passo.
+        
+        NOTA: A viagem de recarga é processada separadamente em GestaoAmbiente.atualizar_viagens_ativas()
         """
         viagens_concluidas: List[Viagem] = []
+        chegou_posto = False
         distancia_total_avancada = 0.0
-        
+                
         # Atualizar viagem de recarga se existir
         if self.viagem_recarga and self.viagem_recarga.viagem_ativa:
             distancia_antes = self.viagem_recarga.distancia_percorrida
@@ -306,7 +320,8 @@ class Veiculo(ABC):
                 self._localizacao_atual = self.viagem_recarga.localizacao_atual
             
             if concluida:
-                self.concluir_viagem_recarga()
+                chegou_posto = True
+                
 
         # Atualizar viagens de pedidos
         for v in list(self.viagens):
@@ -323,7 +338,7 @@ class Veiculo(ABC):
         if distancia_total_avancada > 0:
             self.atualizar_autonomia(distancia_total_avancada)
 
-        return viagens_concluidas
+        return viagens_concluidas, chegou_posto
 
     def concluir_viagem(self, viagem: Viagem):
         """Finaliza apenas a viagem fornecida.
