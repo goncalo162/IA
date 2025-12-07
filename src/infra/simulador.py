@@ -8,6 +8,7 @@ import os
 import time
 from dotenv import load_dotenv
 from infra.simuladorDinamico import SimuladorDinamico
+from infra.logger import SimuladorLogger
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -42,6 +43,7 @@ class Simulador:
         self.ambiente = GestaoAmbiente()
         self.metricas = Metricas()
         self.gestor_eventos = GestorEventos()
+        self.logger = SimuladorLogger()
         
         # Carregar configurações do simulador dinâmico do .env
         chance_troca_tempo = float(os.getenv('CHANCE_TROCA_TEMPO', 0.4))
@@ -59,55 +61,29 @@ class Simulador:
         self.pedidos_agendados = []
         self._arestas_alteradas = set()  # Arestas alteradas para recálculo de rotas
 
-        self._configurar_logging()
-
-    def _configurar_logging(self):
-        """Configura sistema de logging com timestamp para ficheiro."""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        project_root = os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))))
-        log_dir = os.path.join(project_root, 'runs', 'logs')
-        os.makedirs(log_dir, exist_ok=True)
-
-        self.log_ficheiro = os.path.join(log_dir, f'run_{timestamp}.log')
-        self.run_timestamp = timestamp
-
-        with open(self.log_ficheiro, 'w', encoding='utf-8') as f:
-            f.write(f"=== SIMULAÇÃO DE GESTÃO DE FROTA ===\n")
-            f.write(f"Timestamp: {timestamp}\n")
-            f.write(
-                f"Início: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("="*60 + "\n\n")
-
     def _log(self, mensagem: str):
-        """Escreve mensagem no log e envia para o display."""
-        # Escrever no ficheiro de log
-        with open(self.log_ficheiro, 'a', encoding='utf-8') as f:
-            f.write(mensagem + '\n')
+        """Escreve mensagem no log."""
+        self.logger.log(mensagem)
 
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str,
                        caminho_pedidos: str, caminho_eventos_transito: str = None):
         """Carrega todos os dados necessários para a simulação."""
         self._log(f"A carregar grafo de {caminho_grafo}...")
-        self.ambiente.carregar_grafo(caminho_grafo)
+        num_nos_carregados = self.ambiente.carregar_grafo(caminho_grafo)
 
         self._log(f"A carregar veículos de {caminho_veiculos}...")
-        self.ambiente.carregar_veiculos(caminho_veiculos)
+        num_veiculos_carregados = self.ambiente.carregar_veiculos(caminho_veiculos)
 
         self._log(f"A carregar pedidos de {caminho_pedidos}...")
-        self.ambiente.carregar_pedidos(caminho_pedidos)
+        num_pedidos_carregados = self.ambiente.carregar_pedidos(caminho_pedidos)
 
-        self._log("Dados carregados com sucesso!")
-        self._log(f"  - Nós no grafo: {len(self.ambiente.grafo.getNodes())}")
-        self._log(f"  - Veículos: {len(self.ambiente.listar_veiculos())}")
-        self._log(f"  - Pedidos: {len(self.ambiente.listar_pedidos())}")
-
+        num_eventos_carregados = 0
         # Carregar eventos de trânsito se o ficheiro for fornecido
         if caminho_eventos_transito:
             self._log(f"A carregar eventos de trânsito de {caminho_eventos_transito}...")
-            num_eventos = self.gestor_eventos.carregar_eventos_transito(ficheiro_json=caminho_eventos_transito)
-            self._log(f"  - Eventos de trânsito: {num_eventos}")
-
+            num_eventos_carregados = self.gestor_eventos.carregar_eventos_transito(caminho_eventos_transito)
+    
+        self.logger.dados_carregados(num_nos_carregados, num_veiculos_carregados, num_pedidos_carregados, num_eventos_carregados)
 
     def _alterar_transito(self, aresta: str, nivel: str) -> bool:
         """
@@ -139,98 +115,94 @@ class Simulador:
         Verifica todas as viagens ativas e recalcula as rotas que passam pelas arestas alteradas.
         Chamado no loop principal após processar eventos.
         """
-        if not self.viagens_ativas or not self._arestas_alteradas:
-            return
+        viagens_para_recalcular = self.ambiente.identificar_viagens_afetadas(
+            self._arestas_alteradas,
+            self.viagens_ativas
+        )
         
         total_recalculadas = 0
         total_viagens_afetadas = 0
         
-        for aresta in self._arestas_alteradas:
-            for veiculo_id, veiculo in self.viagens_ativas.items():
-                # Verificar se alguma viagem deste veículo passa pela aresta
-                viagens_afetadas = veiculo.viagens_afetadas_por_aresta(aresta, self.ambiente.grafo)
+        for veiculo_id, veiculo, viagens_afetadas, aresta in viagens_para_recalcular:
+            num_viagens = len(viagens_afetadas)
+            total_viagens_afetadas += num_viagens
+            
+            self._log(f"[RECÁLCULO] Veículo {veiculo_id} tem {num_viagens} viagem(ns) afetada(s) por '{aresta}'")
+            
+            # Recalcular rotas usando o navegador
+            recalculos = self._recalcular_rotas_veiculo(veiculo, viagens_afetadas)
+            
+            for rec in recalculos:
+                self._log(f"[RECÁLCULO] Viagem #{rec['pedido_id']} recalculada. Diferença: {rec['delta_tempo']:+.1f} min")
                 
-                if viagens_afetadas:
-                    total_viagens_afetadas += len(viagens_afetadas)
-                    self._log(f"[RECÁLCULO] Veículo {veiculo_id} tem {len(viagens_afetadas)} viagem(ns) afetada(s) por '{aresta}'")
-                    
-                    num_recalculadas = self._recalcular_rotas_veiculo(veiculo, viagens_afetadas)
-                    total_recalculadas += num_recalculadas
+                # Registar métricas
+                self.metricas.registar_recalculo_rota(
+                    pedido_id=rec['pedido_id'],
+                    veiculo_id=veiculo_id,
+                    diferenca_tempo=rec['delta_tempo'],
+                    motivo="transito",
+                    distancia_anterior=rec['distancia_anterior'],
+                    distancia_nova=rec['distancia_nova']
+                )
+                total_recalculadas += 1
         
-        # Registar evento de recálculo nas métricas
         if total_viagens_afetadas > 0:
             self.metricas.registar_evento_recalculo(total_viagens_afetadas)
+            self._log(f"[RECÁLCULO] Total de {total_recalculadas} rota(s) recalculada(s)")
         
         # Limpar lista de arestas alteradas após recálculo
         self._arestas_alteradas.clear()
+    
+    def _recalcular_rotas_veiculo(self, veiculo, viagens_afetadas):
+        """Recalcula rotas de viagens afetadas usando o navegador.
         
-        if total_recalculadas > 0:
-            self._log(f"[RECÁLCULO] Total de {total_recalculadas} rota(s) recalculada(s)")
-
-    #TODO: rever isto _recalcular_rotas_veiculo e talvez arranjar forma mais eficiente de recalcular, por exemplo ir da ultima viagem para a primeira, ate deixar de ser uma viagem com rota afetada, e só recalcular a partir daí
-    #em vez de recalcular todas as viagens afetadas ou não.
-
-    def _recalcular_rotas_veiculo(self, veiculo, viagens_afetadas) -> int:
-        """
-        Recalcula as rotas das viagens afetadas de um veículo.
-        
-        No ride-sharing, todas as viagens ativas partilham a mesma rota base,
-        por isso calculamos uma rota combinada que passa por todos os destinos
-        e depois atualizamos cada viagem com a parte correspondente.
+        Args:
+            veiculo: Veículo com viagens a recalcular
+            viagens_afetadas: Lista de viagens afetadas
+            
+        Returns:
+            Lista de dicts com informações de recálculos
         """
         viagens_ativas = [v for v in viagens_afetadas if v.viagem_ativa]
         if not viagens_ativas:
-            return 0
+            return []
         
         # Obter posição atual do veículo a partir da rota combinada
         rota_total = veiculo.rota_total_viagens()
         pos_atual = rota_total[0] if rota_total else None
         if not pos_atual:
-            return 0
+            return []
         
-        # Obter todos os destinos das viagens ativas do veículo (não só as afetadas)
-        todas_viagens_ativas = [v for v in veiculo.viagens if v.viagem_ativa]
-        destinos = [v.destino for v in todas_viagens_ativas if v.destino]
+        # Obter destinos
+        destinos = veiculo.destinos_viagens_ativas()
         
-        if not destinos:
-            return 0
+        if len(destinos) == 0:
+            return []
         
-        # Se só há um destino, calcular rota simples
+        # Caso simples: um destino
         if len(destinos) == 1:
-            # Se já estamos no destino, não há nada a recalcular
             if pos_atual == destinos[0]:
-                return 0
+                return []
             
             nova_rota = self.navegador.calcular_rota(self.ambiente.grafo, pos_atual, destinos[0])
             if nova_rota and len(nova_rota) >= 2:
                 viagem = viagens_ativas[0]
-                tempo_anterior = viagem.tempo_restante_horas()
-                distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
-                
-                if viagem.aplicar_nova_rota(nova_rota, self.ambiente.grafo):
-                    tempo_novo = viagem.tempo_restante_horas()
-                    distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
-                    delta = (tempo_novo - tempo_anterior) * 60
-                    
-                    # Registar métricas de recálculo
-                    self.metricas.registar_recalculo_rota(
-                        pedido_id=viagem.pedido_id,
-                        veiculo_id=veiculo.id_veiculo,
-                        diferenca_tempo=delta,
-                        motivo="transito",
-                        distancia_anterior=distancia_anterior,
-                        distancia_nova=distancia_nova
-                    )
-                    
-                    self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
-                    return 1
-            return 0
+                info = self.ambiente.aplicar_nova_rota(viagem, nova_rota)
+                return [info] if info else []
+            return []
         
-        # Para ride-sharing com múltiplos destinos: calcular rota combinada
-        # Ordenar destinos por chegada estimada atual para manter a ordem
-        destinos_unicos = list(dict.fromkeys(destinos))  # Remove duplicados mantendo ordem
+        # Ride-sharing: rota combinada (múltiplos destinos)
+        return self._recalcular_rota_ridesharing(veiculo, viagens_ativas, pos_atual, destinos)
+
+
+    #TODO: rever isto e talvez arranjar forma mais eficiente de recalcular, por exemplo ir da ultima viagem para a primeira, ate deixar de ser uma viagem com rota afetada, e só recalcular a partir daí
+    #em vez de recalcular todas as viagens afetadas ou não.
+    
+    def _recalcular_rota_ridesharing(self, veiculo, todas_viagens_ativas, pos_atual, destinos):
+        """Recalcula rotas para ride-sharing com múltiplos destinos."""
+        destinos_unicos = list(dict.fromkeys(destinos)) #TODO: não sei se deveriamos tirar os duplicados ou não REVER
         
-        # Calcular rota que passa por todos os destinos na ordem
+        # Calcular rota combinada
         rota_combinada = [pos_atual]
         ponto_atual = pos_atual
         
@@ -243,18 +215,14 @@ class Simulador:
                 ponto_atual = destino
         
         if len(rota_combinada) < 2:
-            return 0
+            return []
         
-        # Aplicar a rota apropriada a cada viagem
-        recalculadas = 0
+        # Aplicar rota a cada viagem
+        recalculos = []
         for viagem in todas_viagens_ativas:
             destino_viagem = viagem.destino
             
-            # Se já estamos no destino desta viagem, não recalcular
-            if destino_viagem == pos_atual:
-                continue
-            
-            if destino_viagem not in rota_combinada:
+            if destino_viagem == pos_atual or destino_viagem not in rota_combinada:
                 continue
             
             # A rota desta viagem vai até ao seu destino
@@ -265,50 +233,25 @@ class Simulador:
             if len(rota_viagem) < 2:
                 continue
             
-            tempo_anterior = viagem.tempo_restante_horas()
-            distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
-            
-            if viagem.aplicar_nova_rota(rota_viagem, self.ambiente.grafo):
-                tempo_novo = viagem.tempo_restante_horas()
-                distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
-                delta = (tempo_novo - tempo_anterior) * 60
-                
-                # Registar métricas de recálculo
-                self.metricas.registar_recalculo_rota(
-                    pedido_id=viagem.pedido_id,
-                    veiculo_id=veiculo.id_veiculo,
-                    diferenca_tempo=delta,
-                    motivo="transito",
-                    distancia_anterior=distancia_anterior,
-                    distancia_nova=distancia_nova
-                )
-                
-                self._log(f"[RECÁLCULO] Viagem #{viagem.pedido_id} recalculada. Diferença: {delta:+.1f} min")
-                recalculadas += 1
+            info = self.ambiente.aplicar_nova_rota(viagem, rota_viagem)
+            if info:
+                recalculos.append(info)
         
-        return recalculadas
+        return recalculos
+
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
         self.em_execucao = True
         tempo_final = self.tempo_simulacao + timedelta(hours=duracao_horas)
 
-        self._log("\n" + "="*60)
-        self._log("INICIANDO SIMULAÇÃO TEMPORAL")
-        self._log("="*60)
-        self._log(
-            f"Tempo inicial: {self.tempo_simulacao.strftime('%Y-%m-%d %H:%M:%S')}")
-        self._log(f"Duração: {duracao_horas} horas")
-        self._log(f"Velocidade de simulação: {self.velocidade_simulacao}x")
-
-        if self.velocidade_simulacao > VELOCIDADE_MAXIMA_SINCRONIZADA:
-            self._log(
-                f" MODO TURBO ATIVADO: Velocidade > {VELOCIDADE_MAXIMA_SINCRONIZADA}x")
-
-        self._log(f"Frequência de cálculo: {self.frequencia_calculo} Hz")
-        self._log(
-            f"Passo temporal simulado: {self.passo_tempo.total_seconds()} segundos")
-        self._log("="*60 + "\n")
+        self.logger.simulacao_iniciada(
+            duracao_horas=duracao_horas,
+            inicio=self.tempo_simulacao,
+            velocidade_simulacao=self.velocidade_simulacao,
+            frequencia_calculo=self.frequencia_calculo,
+            passo_tempo=self.passo_tempo
+        )
 
         # Iniciar display se disponível
         if self.display:
@@ -367,7 +310,6 @@ class Simulador:
             tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
             self._atualizar_viagens_ativas(tempo_passo_horas)
 
-
             # 5. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
@@ -393,14 +335,7 @@ class Simulador:
 
         # Finalizar simulação
         self.em_execucao = False
-        self._log("\n" + "="*60)
-        self._log("SIMULAÇÃO CONCLUÍDA")
-        self._log("="*60)
-        self._log(
-            f"Tempo final: {self.tempo_simulacao.strftime('%Y-%m-%d %H:%M:%S')}")
-        self._log(f"Pedidos processados: {self.metricas.pedidos_atendidos}")
-        self._log(f"Pedidos rejeitados: {self.metricas.pedidos_rejeitados}")
-        self._log("="*60 + "\n")
+        self.logger.simulacao_concluida(fim=self.tempo_simulacao)
 
         # Gerar relatório de métricas
         self._log(self.metricas.gerar_relatorio())
@@ -412,6 +347,7 @@ class Simulador:
         if self.display:
             self.display.finalizar()
 
+    #NOTA: talvez meter isto no logger ou nas metricas?
     def _exportar_estatisticas(self):
         """Exporta as métricas para CSV cumulativo."""
         project_root = os.path.dirname(os.path.dirname(
@@ -428,7 +364,7 @@ class Simulador:
         self.metricas.exportar_csv(csv_ficheiro, config)
 
         self._log(f"\n Estatísticas exportadas para: {csv_ficheiro}")
-        self._log(f" Log da simulação guardado em: {self.log_ficheiro}")
+        self._log(f" Log da simulação guardado em: {self.logger.get_caminho_log()}")
 
     def _agendar_pedidos(self):
         """Agenda todos os pedidos para chegarem no horário pretendido."""
@@ -462,7 +398,6 @@ class Simulador:
         """
         # Verificar se já está num posto adequado
         if veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):
-            # Já está num posto, pode iniciar recarga imediatamente
             self.gestor_eventos.agendar_evento(
                 tempo=self.tempo_simulacao,
                 tipo=TipoEvento.INICIO_RECARGA,
@@ -470,74 +405,52 @@ class Simulador:
                 dados={'veiculo': veiculo},
                 prioridade=5
             )
-        else:
-            # Precisa ir até um posto - usar método local do simulador
-            posto_info = self._encontrar_posto_mais_proximo(veiculo)
-            
-            if not posto_info:
-                tipo_posto = veiculo.tipo_posto_necessario()
-                self._log(f"  [red]✗[/] Nenhum posto de tipo {tipo_posto.name} encontrado para veículo {veiculo.id_veiculo}")
-                self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
-                return
-            
-            posto_nome, rota, distancia = posto_info
-            
-            # Verificar se tem autonomia para chegar ao posto
-            if not veiculo.autonomia_suficiente_para(distancia, margem_seguranca=0):
-                self._log(f"  [red]✗[/] Veículo {veiculo.id_veiculo} não tem autonomia para chegar ao posto mais próximo ({distancia:.1f} km)")
-                # Veículo ficou sem autonomia - registar como indisponível
-                veiculo.estado = EstadoVeiculo.INDISPONIVEL
-                self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
-                return
-            
-            # Iniciar viagem até o posto
-            if veiculo.iniciar_viagem_recarga(rota, posto_nome, distancia, self.tempo_simulacao, self.ambiente.grafo):
-                self.viagens_ativas[veiculo.id_veiculo] = veiculo
-                tempo_viagem = self.ambiente._calcular_tempo_rota(rota)
-                self._log(f"  [INFO] Veículo {veiculo.id_veiculo} a caminho do posto '{posto_nome}' ({distancia:.1f} km, ~{tempo_viagem*60:.1f} min)")
-            else:
-                self._log(f"  [red]✗[/] Falha ao iniciar viagem de recarga para veículo {veiculo.id_veiculo}")
-    
-    def _encontrar_posto_mais_proximo(self, veiculo):
-        """Encontra o posto de abastecimento/recarga mais próximo do veículo.
+            return
         
-        Args:
-            veiculo: Veículo que precisa de recarga
-            
-        Returns:
-            Tupla (nome_posto, rota, distância) ou None se não encontrar
-        """
-        tipo_posto = veiculo.tipo_posto_necessario()
-        postos = self.ambiente.grafo.get_nodes_by_tipo(tipo_posto)
+        # Precisa ir até um posto - obter lista de postos
+        postos = self.ambiente.listar_postos_por_tipo(veiculo.tipo_posto_necessario())
         
         if not postos:
-            return None
+            tipo_posto = veiculo.tipo_posto_necessario()
+            self._log(f"  [red]✗[/] Nenhum posto de tipo {tipo_posto.name} encontrado para veículo {veiculo.id_veiculo}")
+            self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
+            return
         
-
-        #NOTA: O melhor posto é sempre o que tem menor distancia da localização atual do veiculo
-        localizacao_atual = veiculo.localizacao_atual
-        melhor_posto = None
-        melhor_rota = None
-        menor_distancia = float('inf')
+        # Encontrar posto mais próximo calculando rotas
+        posto_nome = None
+        rota_mais_curta = None
+        distancia_mais_curta = float('inf')
         
-
-
-        for posto in postos:
-            try:
-                rota = self.navegador.calcular_rota(self.ambiente.grafo, localizacao_atual, posto)
-                if rota and len(rota) >= 2:
-                    distancia = self.ambiente._calcular_distancia_rota(rota)
-                    if distancia < menor_distancia:
-                        menor_distancia = distancia
-                        melhor_posto = posto
-                        melhor_rota = rota
-            except Exception:
-                continue
+        for p_nome in postos:
+            rota_temp = self.navegador.calcular_rota(self.ambiente.grafo, veiculo.localizacao_atual, p_nome)
+            if rota_temp and len(rota_temp) >= 2:
+                dist_temp = self.ambiente.grafo.calcular_distancia_rota(rota_temp)
+                if dist_temp < distancia_mais_curta:
+                    distancia_mais_curta = dist_temp
+                    rota_mais_curta = rota_temp
+                    posto_nome = p_nome
         
-        if melhor_posto:
-            return (melhor_posto, melhor_rota, menor_distancia)
+        if not posto_nome or not rota_mais_curta:
+            tipo_posto = veiculo.tipo_posto_necessario()
+            self._log(f"  [red]✗[/] Nenhuma rota para posto de tipo {tipo_posto.name} encontrada para veículo {veiculo.id_veiculo}")
+            self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
+            return
         
-        return None
+        # Verificar autonomia
+        if not veiculo.autonomia_suficiente_para(distancia_mais_curta, margem_seguranca=0):
+            self._log(f"  [red]✗[/] Veículo {veiculo.id_veiculo} não tem autonomia para chegar ao posto mais próximo ({distancia_mais_curta:.1f} km)")
+            veiculo.estado = EstadoVeiculo.INDISPONIVEL
+            self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
+            return
+        
+        # Iniciar viagem até o posto
+        if veiculo.iniciar_viagem_recarga(rota_mais_curta, posto_nome, distancia_mais_curta, self.tempo_simulacao, self.ambiente.grafo):
+            self.viagens_ativas[veiculo.id_veiculo] = veiculo
+            tempo_viagem = self.ambiente._calcular_tempo_rota(rota_mais_curta)
+            self._log(f"  [INFO] Veículo {veiculo.id_veiculo} a caminho do posto '{posto_nome}' ({distancia_mais_curta:.1f} km, ~{tempo_viagem*60:.1f} min)")
+        else:
+            self._log(f"  [red]✗[/] Falha ao iniciar viagem de recarga para veículo {veiculo.id_veiculo}")
+            
 
     def _atualizar_viagens_ativas(self, tempo_passo_horas: float = None):
         """Atualiza o progresso de todas as viagens em curso.
@@ -552,36 +465,15 @@ class Simulador:
         if tempo_passo_horas is None:
             tempo_passo_horas = self.passo_tempo.total_seconds() / 3600
 
-        viagens_concluidas = []
-        veiculos_chegaram_posto = []
-
-        for veiculo_id, veiculo in list(self.viagens_ativas.items()):
-            # Verificar se é viagem de recarga
-            if veiculo.viagem_recarga and veiculo.viagem_recarga.viagem_ativa:
-                distancia_antes = veiculo.viagem_recarga.distancia_percorrida
-                concluida = veiculo.viagem_recarga.atualizar_progresso(tempo_passo_horas)
-                distancia_depois = veiculo.viagem_recarga.distancia_percorrida
-                distancia_avancada = max(0.0, distancia_depois - distancia_antes)
-                veiculo.atualizar_autonomia(distancia_avancada)
-                
-                if concluida:
-                    veiculos_chegaram_posto.append((veiculo_id, veiculo))
-
-                # TODO: nao devia ser continue, porque das duas uma, ou so tem a viagem de rearga ou entao o posto de reabastecimento esta dentro das outras viagens
-                #  Continue para não processar viagens normais enquanto está em viagem de recarga
-                continue
-            
-            # Atualizar viagens normais de pedidos (só se não estiver em viagem de recarga)
-            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
-            for v in concluidas:
-                viagens_concluidas.append((veiculo_id, veiculo, v))
-
+        viagens_concluidas, veiculos_chegaram_posto = self.ambiente.atualizar_viagens_ativas(
+            self.viagens_ativas,
+            tempo_passo_horas
+        )
+        
         # Processar veículos que chegaram ao posto
         for veiculo_id, veiculo in veiculos_chegaram_posto:
-            veiculo.concluir_viagem_recarga()
             self._log(f"[INFO] Veículo {veiculo.id_veiculo} chegou ao posto em {veiculo.localizacao_atual}")
             
-            # Verificar se pode reabastecer neste local
             if veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):
                 # Agendar início da recarga
                 self.gestor_eventos.agendar_evento(
@@ -591,19 +483,18 @@ class Simulador:
                     dados={'veiculo': veiculo},
                     prioridade=5
                 )
-                # NÃO remover de viagens_ativas ainda - será removido após recarga concluir
             else:
                 self._log(f"  [yellow]![/] Veículo {veiculo.id_veiculo} não pode reabastecer em {veiculo.localizacao_atual}")
                 # Remover da lista de viagens ativas se não vai reabastecer
                 if veiculo_id in self.viagens_ativas and not veiculo.viagem_ativa:
                     del self.viagens_ativas[veiculo_id]
 
-        # Processar viagens concluídas (por viagem específica)
+        # Processar viagens concluídas
         for veiculo_id, veiculo, viagem in viagens_concluidas:
             self._concluir_viagem(veiculo, viagem)
             # Remover veículo da lista ativa apenas se não houver mais viagens ativas
             if not veiculo.viagem_ativa and veiculo_id in self.viagens_ativas:
-                    del self.viagens_ativas[veiculo_id]
+                del self.viagens_ativas[veiculo_id]
 
     def _concluir_viagem(self, veiculo, viagem):
         """Processa a conclusão de uma viagem específica em um veículo."""
@@ -621,38 +512,37 @@ class Simulador:
             self._log(f"  [yellow]AVISO[/] Veículo {veiculo.id_veiculo} precisa recarga (autonomia: {veiculo.autonomia_atual:.1f}/{veiculo.autonomia_maxima} km, {autonomia_pct:.1f}%)")
             self._agendar_recarga(veiculo)
 
-    def _processar_pedido(self, pedido):
-        """Processa um pedido individual no modo temporal."""
-        horario_log = self.tempo_simulacao.strftime('%H:%M:%S')
-        self._log(
-            f"\n {horario_log} - [cyan]Processando Pedido #{pedido.id}[/]")
-  
-        # 1. Pré-calcular rota do pedido (origem -> destino)
-        origem_pedido_nome = self.ambiente.grafo.getNodeName(pedido.origem)
-        destino_nome = self.ambiente.grafo.getNodeName(pedido.destino)
-        rota_viagem = self.navegador.calcular_rota(
-            grafo=self.ambiente.grafo,
-            origem=origem_pedido_nome,
-            destino=destino_nome
-        )
+    def _validar_rota_pedido(self, pedido):
+        """Valida e calcula a rota do pedido.
+        
+        Returns:
+            Tupla (rota_viagem, distancia_viagem, origem_nome, destino_nome) ou (None, 0, origem, destino) se inválido
+        """
 
-        if rota_viagem is None:
-            self._log(
-                f"  [red]✗[/] Rota pedido não encontrada ({origem_pedido_nome} -> {destino_nome})")
-            self.metricas.registar_pedido_rejeitado(
-                pedido.id, "Rota pedido não encontrada")
+        #NOTA: dar return de informação sobre postos de abastecimento também ou criar novo metodo auxiliar que trate disso?
+
+        origem_nome, destino_nome = self.ambiente.obter_nomes_nos_pedido(pedido)
+        
+        rota_viagem = self.navegador.calcular_rota(self.ambiente.grafo, origem_nome, destino_nome)
+        
+        if rota_viagem is None or len(rota_viagem) < 2:
+            self._log(f"  [red]✗[/] Rota pedido não encontrada ({origem_nome} -> {destino_nome})")
+            self.metricas.registar_pedido_rejeitado(pedido.id, "Rota pedido não encontrada")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
-            return
-
-        distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
-
-        # NOTA: se calhar depois de calcularmos a rota da origem do pedido ate ao fim do pedido, e virmos se tem algum posto de abastecimento pelo caminho e onde,
-        # podiamos considerar ir abastecer antes de ir buscar o cliente ou durante a viagem, ou seja, escolher um carro depois de calcular a rota do pedido
-        # so depois calcular a rota do carro escolhido ate ao inicio do pedido.
-
-        # 2. Escolher veículo considerando autonomia e rota até cliente
-        # Escolher a lista de veículos apropriada (ride-sharing inclui em andamento)
+            return (None, 0, origem_nome, destino_nome)
+        
+        distancia_viagem = self.ambiente.grafo.calcular_distancia_rota(rota_viagem)
+        
+        return (rota_viagem, distancia_viagem, origem_nome, destino_nome)
+    
+    def _escolher_veiculo_para_pedido(self, pedido, rota_viagem, distancia_viagem):
+        """Escolhe o veículo apropriado para o pedido.
+        
+        Returns:
+            Veículo escolhido ou None se nenhum disponível
+        """
+        #TODO: confirmar se tem postos de abastecimento adequados na rota se necessário, e passar essa informação ao alocador?
         lista_veiculos = (self.ambiente.listar_veiculos_ridesharing()
                           if pedido.ride_sharing
                           else self.ambiente.listar_veiculos_disponiveis())
@@ -666,81 +556,84 @@ class Simulador:
         )
 
         if veiculo is None:
-            self._log(
-                f"  [yellow][/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}")
-            self.metricas.registar_pedido_rejeitado(
-                pedido.id, "Sem veículos com autonomia suficiente")
+            self._log(f"  [yellow][/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}")
+            self.metricas.registar_pedido_rejeitado(pedido.id, "Sem veículos com autonomia suficiente")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
-            return
+        
+        return veiculo
+    
+    def _ajustar_rotas_ridesharing(self, veiculo, origem_nome, destino_nome):
+        """Ajusta rotas para ride-sharing se necessário.
+        
+        Returns:
+            Tupla (rota_viagem_ajustada, distancia_viagem_ajustada) ou None se sem ajustes
+        """
+        #TODO: rever se queremos sem desvios (como está agora) ou permitir desvios pequenos
+        #se permitir desvios tem que recalcular a rota toda de novo
+        #senao, se o veiculo ja tem viagens ativas, a rota do pedido deve iniciar coincidente com o plano atual do veiculo
+        #  e so depois estender até ao destino do pedido
+    
 
-        self._log(f"  [green][/] Veículo alocado: {veiculo.id_veiculo}")
-        self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
+        # Obter rota atual do veículo
+        rota_atual = self.ambiente.obter_rota_atual_veiculo(veiculo)
+        if not rota_atual or len(rota_atual) < 2:
+            return None
+        
+        # Verificar se há viagens ativas
+        viagens_ativas = [v for v in veiculo.viagens if v.viagem_ativa]
+        if not viagens_ativas:
+            return None
+        
+        # verificar se a origem do pedido está na rota atual do veiculo
+        if rota_atual and origem_nome not in rota_atual:
+            return None
+        
+        # Construir rota combinada
+        idx_origem = rota_atual.index(origem_nome)
+        #veiculo -> cliente: do inicio da rota até a origem do pedido
+        nova_rota_ate_origem = rota_atual[:idx_origem + 1]
+        #cliente -> destino: seguir rota tual e se necessário estender ate ao pedido
+        tail_rota = rota_atual[idx_origem:]
+        if destino_nome in tail_rota:
+            idx_destino = tail_rota.index(destino_nome)
+            nova_rota_viagem = tail_rota[:idx_destino + 1]
+        else:
+            extensao_rota = self.navegador.calcular_rota(self.ambiente.grafo, tail_rota[-1], destino_nome)
+            if extensao_rota is None or len(extensao_rota) < 2:
+                return None
+            nova_rota_viagem = tail_rota + extensao_rota[1:]  # Sem repetir o nó de junção
 
-        # TODO: decidir se as localizações são nomes ou IDs
-        #TODO: REVER ISTO TUDO ABAIXO
-
-        # Ajuste de rotas para ride-sharing sem desvios:
-
-        #todo: rever se queremos sem desvios ou se pode fazer desvios e tem que recalcular a rota
-        # Se o veículo já tem viagens ativas, a rota do pedido deve iniciar
-        # coincidente com o plano atual do veículo e só depois estender até ao destino.
-        if pedido.ride_sharing and veiculo.estado == veiculo.estado.EM_ANDAMENTO:
-            try:
-                rota_total = veiculo.rota_total_viagens()
-            except Exception:
-                rota_total = []
-
-            if rota_total and origem_pedido_nome in rota_total:
-                idx_origem = rota_total.index(origem_pedido_nome)
-                # veículo -> cliente: do início do plano até à origem (inclui a origem)
-                nova_rota_ate_cliente = rota_total[:idx_origem+1]
-
-                # cliente -> destino: seguir o plano e, se necessário, estender até ao destino
-                tail = rota_total[idx_origem:]
-                if destino_nome in tail:
-                    dest_idx = tail.index(destino_nome)
-                    nova_rota_viagem = tail[:dest_idx+1]
-                else:
-                    rota_extra = self.navegador.calcular_rota(
-                        grafo=self.ambiente.grafo,
-                        origem=tail[-1],
-                        destino=destino_nome
-                    )
-                    if rota_extra and len(rota_extra) > 0:
-                        nova_rota_viagem = tail + (rota_extra[1:] if len(rota_extra) > 1 else [])
-                    else:
-                        nova_rota_viagem = rota_viagem  # fallback se não houver rota de extensão
-
-                # Atualizar distâncias e valores utilizados adiante
-                veiculo.rota_ate_cliente = nova_rota_ate_cliente
-                veiculo.distancia_ate_cliente = self.ambiente._calcular_distancia_rota(nova_rota_ate_cliente)
-                rota_viagem = nova_rota_viagem
-                distancia_viagem = self.ambiente._calcular_distancia_rota(rota_viagem)
-
-        # 3. Recuperar rota veículo -> cliente e distância calculadas pelo alocador
-        rota_ate_cliente = veiculo.rota_ate_cliente
-        distancia_ate_cliente = veiculo.distancia_ate_cliente
-
-        distancia_total = distancia_ate_cliente + distancia_viagem
-
+        veiculo.rota_ate_cliente = nova_rota_ate_origem
+        veiculo.distancia_ate_cliente = self.ambiente.grafo.calcular_distancia_rota(nova_rota_ate_origem)
+        distancia_viagem = self.ambiente.grafo.calcular_distancia_rota(nova_rota_viagem)
+        return (nova_rota_viagem, distancia_viagem)
+    
+    def _calcular_metricas_viagem(self, rota_ate_cliente, rota_viagem, veiculo, distancia_viagem):
+        """Calcula métricas da viagem.
+        
+        Returns:
+            Dict com tempo_ate_cliente, tempo_viagem, custo, emissoes
+        """
         tempo_ate_cliente = self.ambiente._calcular_tempo_rota(rota_ate_cliente) * 60
         tempo_viagem = self.ambiente._calcular_tempo_rota(rota_viagem) * 60
-
-        # NOTA: rever se devia ser com a distancia total
         custo = distancia_viagem * veiculo.custo_operacional_km
         emissoes = self.ambiente._calcular_emissoes(veiculo, distancia_viagem)
-
-        self._log(
-            f"  [green][/] Rota veículo->cliente: {' → '.join(rota_ate_cliente)}")
-        self._log(
-            f"  [green][/] Rota cliente->destino: {' → '.join(rota_viagem)}")
-        self._log(
-            f"    Distância: {distancia_total:.2f} km ({tempo_ate_cliente + tempo_viagem:.1f} min)")
-        self._log(
-            f"    Custo: €{custo:.2f} |  Emissões: {emissoes:.2f} kg CO₂")
-
-        # 5. Iniciar viagem
+        
+        return {
+            'tempo_ate_cliente': tempo_ate_cliente,
+            'tempo_viagem': tempo_viagem,
+            'custo': custo,
+            'emissoes': emissoes
+        }
+    
+    
+    def _iniciar_viagem_pedido(self, veiculo, pedido, rota_ate_cliente, rota_viagem, distancia_ate_cliente, distancia_viagem):
+        """Inicia a viagem do veículo.
+        
+        Returns:
+            True se iniciou com sucesso, False caso contrário
+        """
         iniciou = veiculo.iniciar_viagem(
             pedido=pedido,
             rota_ate_cliente=rota_ate_cliente,
@@ -750,33 +643,71 @@ class Simulador:
             tempo_inicio=self.tempo_simulacao,
             grafo=self.ambiente.grafo
         )
+        
         if not iniciou:
-            self._log(
-                f"  [yellow][/] Capacidade excedida para ride-sharing no veículo {veiculo.id_veiculo}")
-            self.metricas.registar_pedido_rejeitado(
-                pedido.id, "Capacidade ride-sharing excedida")
+            self._log(f"  [yellow][/] Capacidade excedida para ride-sharing no veículo {veiculo.id_veiculo}")
+            self.metricas.registar_pedido_rejeitado(pedido.id, "Capacidade ride-sharing excedida")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
+        
+        return iniciou
+
+    def _processar_pedido(self, pedido):
+        """Processa um pedido individual no modo temporal."""
+        horario_log = self.tempo_simulacao.strftime('%H:%M:%S')
+        self._log(f"\n {horario_log} - [cyan]Processando Pedido #{pedido.id}[/]")
+  
+        # 1. Pré-calcular e validar rota do pedido (origem -> destino)
+        rota_viagem, distancia_viagem, origem_nome, destino_nome = self._validar_rota_pedido(pedido)
+        if rota_viagem is None:
+            return
+
+        # 2. Escolher veículo
+        veiculo = self._escolher_veiculo_para_pedido(pedido, rota_viagem, distancia_viagem)
+        if veiculo is None:
+            return
+
+        self._log(f"  [green][/] Veículo alocado: {veiculo.id_veiculo}")
+        self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
+
+        # 3. Ajustar rotas para ride-sharing se necessário 
+        # #TODO rever porque o alocador se o veiculo tiver viagens já so verifica se la passa, 
+        # e depois ao fazer este ajusto pode ficar mais custoso o veiculo escolhido do que outro que tivesse uma parte do percurso igual
+        ajuste_ridesharing = self._ajustar_rotas_ridesharing(veiculo, origem_nome, destino_nome)
+        if ajuste_ridesharing:
+            rota_viagem, distancia_viagem = ajuste_ridesharing
+
+        # 4. Recuperar rota veículo -> cliente
+        rota_ate_cliente = veiculo.rota_ate_cliente
+        distancia_ate_cliente = veiculo.distancia_ate_cliente
+        distancia_total = distancia_ate_cliente + distancia_viagem
+
+        # 5. Calcular métricas
+        metricas_viagem = self._calcular_metricas_viagem(rota_ate_cliente, rota_viagem, veiculo, distancia_viagem)
+        
+        # 6. Log informações
+        self.logger.info_viagem(rota_ate_cliente, rota_viagem, distancia_total, metricas_viagem)
+
+        # 7. Iniciar viagem
+        if not self._iniciar_viagem_pedido(veiculo, pedido, rota_ate_cliente, rota_viagem, distancia_ate_cliente, distancia_viagem):
             return
 
         self.viagens_ativas[veiculo.id_veiculo] = veiculo
 
-        # 6. Registar métricas
+        # 8. Registar métricas
         self.metricas.registar_pedido_atendido(
             pedido_id=pedido.id,
             veiculo_id=veiculo.id_veiculo,
-            tempo_resposta=tempo_ate_cliente,
+            tempo_resposta=metricas_viagem['tempo_ate_cliente'],
             distancia=distancia_viagem,
-            custo=custo,
-            emissoes=emissoes
+            custo=metricas_viagem['custo'],
+            emissoes=metricas_viagem['emissoes']
         )
 
-        self._log(
-            f"  [green][/] Viagem iniciada - ETA: {tempo_ate_cliente + tempo_viagem:.1f} min")
+        self._log(f"  [green][/] Viagem iniciada - ETA: {metricas_viagem['tempo_ate_cliente'] + metricas_viagem['tempo_viagem']:.1f} min")
 
-        # Atualizar displays
+        # 9. Atualizar displays #TODO: atualizar display para soportar ryde-sharing
         if self.display:
-            # Atualizar display com a rota desta nova viagem
             nova_viagem_rota = veiculo.viagens[-1].rota if veiculo.viagens else []
             self.display.atualizar(pedido, veiculo, nova_viagem_rota)
     
@@ -820,13 +751,11 @@ class Simulador:
             tempo_recarga: Tempo gasto em recarga (minutos)
         """
         autonomia_anterior = veiculo.autonomia_atual
-        veiculo.reabastecer()
+        autonomia_recarregada = self.ambiente.executar_recarga(veiculo)
         
         self._log(f"[green]OK[/] Veículo {veiculo.id_veiculo} terminou recarga")
         self._log(f"    Autonomia: {autonomia_anterior} km -> {veiculo.autonomia_atual} km ({veiculo.percentual_autonomia_atual:.1f}%)")
         
-        # Registrar métricas de recarga
-        autonomia_recarregada = veiculo.autonomia_atual - autonomia_anterior
         self.metricas.registar_recarga(
             veiculo_id=veiculo.id_veiculo,
             tempo_recarga=tempo_recarga,

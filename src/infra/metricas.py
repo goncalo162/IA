@@ -7,7 +7,7 @@ import csv
 import os
 
 # TODO: rever e expandir com mais métricas conforme necessário
-
+#TODO rever alguns calculos
 
 class Metricas:
     """
@@ -247,6 +247,7 @@ class Metricas:
     # -------------------- Relatórios e Exportação --------------------
 
     # NOTA: Aqui se calhar depois fazer de outra maneira para juntar com o display
+    #TODO: juntar com o logger de alguma forma?
 
     def gerar_relatorio(self) -> str:
         """Gera um relatório textual com todas as métricas."""

@@ -28,14 +28,17 @@ class GestaoAmbiente:
 
     # -------------------- Carregar dados --------------------
 
-    def carregar_grafo(self, caminho: str):
+    def carregar_grafo(self, caminho: str) -> int:
         """Carrega o grafo a partir de um ficheiro JSON."""
         self.grafo = Grafo.from_json_file(caminho)
+        return len(self.grafo.getNodes())
 
-    def carregar_veiculos(self, caminho: str):
+    def carregar_veiculos(self, caminho: str) -> int:
         """Carrega a frota de veículos a partir de um ficheiro JSON."""
         with open(caminho, 'r', encoding='utf-8') as f:
             dados = json.load(f)
+
+        num_veiculos_carregados = 0
 
         for v_data in dados.get('veiculos', []):
             tipo = v_data.get('tipo', '').lower()
@@ -71,11 +74,16 @@ class GestaoAmbiente:
 
             veiculo._estado = estado
             self._veiculos[veiculo.id_veiculo] = veiculo
+            num_veiculos_carregados += 1
 
-    def carregar_pedidos(self, caminho: str):
+        return num_veiculos_carregados
+
+    def carregar_pedidos(self, caminho: str) -> int:
         """Carrega os pedidos de transporte a partir de um ficheiro JSON."""
         with open(caminho, 'r', encoding='utf-8') as f:
             dados = json.load(f)
+
+        num_pedidos_carregados = 0
 
         for p_data in dados.get('pedidos', []):
             horario_str = p_data.get('horario_pretendido', '')
@@ -95,6 +103,9 @@ class GestaoAmbiente:
             )
             pedido._estado = estado
             self._pedidos[pedido.id] = pedido
+            num_pedidos_carregados += 1
+        
+        return num_pedidos_carregados
 
     # -------------------- Veículos --------------------
     def adicionar_veiculo(self, veiculo: Veiculo):
@@ -238,3 +249,152 @@ class GestaoAmbiente:
             fim = self.grafo.getRandomNodo()
 
         return (inicio, fim)
+
+    
+    # -------------------- Recálculo de Rotas --------------------
+    
+    def identificar_viagens_afetadas(self, arestas_alteradas: set, viagens_ativas: dict):
+        """Identifica viagens afetadas por alterações de trânsito.
+        
+        Args:
+            arestas_alteradas: Set de arestas que tiveram alteração de trânsito
+            viagens_ativas: Dicionário de veículos com viagens ativas
+            
+        Returns:
+            Lista de tuplas (veiculo_id, veiculo, viagens_afetadas, aresta)
+        """
+        if not viagens_ativas or not arestas_alteradas:
+            return []
+        
+        viagens_para_recalcular = []
+        
+        for aresta in arestas_alteradas:
+            for veiculo_id, veiculo in viagens_ativas.items():
+                viagens_afetadas = veiculo.viagens_afetadas_por_aresta(aresta, self.grafo)
+                
+                if viagens_afetadas:
+                    viagens_para_recalcular.append((
+                        veiculo_id, 
+                        veiculo, 
+                        viagens_afetadas,
+                        aresta
+                    ))
+        
+        return viagens_para_recalcular
+    
+    def aplicar_nova_rota(self, viagem, nova_rota):
+        """Aplica nova rota a uma viagem e retorna informações.
+        
+        Args:
+            viagem: Viagem a atualizar
+            nova_rota: Nova rota a aplicar
+            
+        Returns:
+            Dict com {pedido_id, delta_tempo, distancia_anterior, distancia_nova} ou None
+        """
+        tempo_anterior = viagem.tempo_restante_horas()
+        distancia_anterior = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+        
+        if viagem.aplicar_nova_rota(nova_rota, self.grafo):
+            tempo_novo = viagem.tempo_restante_horas()
+            distancia_nova = sum(seg['distancia'] for seg in viagem.segmentos[viagem.indice_segmento_atual:])
+            delta = (tempo_novo - tempo_anterior) * 60
+            
+            return {
+                'pedido_id': viagem.pedido_id,
+                'delta_tempo': delta,
+                'distancia_anterior': distancia_anterior,
+                'distancia_nova': distancia_nova
+            }
+        return None
+    
+    # -------------------- Gestão de Recarga --------------------
+    
+    def executar_recarga(self, veiculo) -> float:
+        """Executa a recarga de um veículo e retorna autonomia recarregada.
+        
+        Args:
+            veiculo: Veículo a reabastecer
+            
+        Returns:
+            Autonomia recarregada em km
+        """
+        autonomia_anterior = veiculo.autonomia_atual
+        veiculo.reabastecer()
+        return veiculo.autonomia_atual - autonomia_anterior
+    
+    # -------------------- Processamento de Viagens --------------------
+    
+    def atualizar_viagens_ativas(self, viagens_ativas: dict, tempo_passo_horas: float):
+        """Atualiza o progresso de todas as viagens em curso.
+        
+        Args:
+            viagens_ativas: Dicionário de veículos com viagens ativas
+            tempo_passo_horas: Tempo simulado decorrido neste passo, em horas
+            
+        Returns:
+            Tupla (viagens_concluidas, veiculos_chegaram_posto)
+        """
+        if not viagens_ativas:
+            return ([], [])
+        
+        viagens_concluidas = []
+        veiculos_chegaram_posto = []
+        
+        for veiculo_id, veiculo in list(viagens_ativas.items()):
+            # Processar viagem de recarga
+            if veiculo.viagem_recarga and veiculo.viagem_recarga.viagem_ativa:
+                distancia_antes = veiculo.viagem_recarga.distancia_percorrida
+                concluida = veiculo.viagem_recarga.atualizar_progresso(tempo_passo_horas)
+                distancia_depois = veiculo.viagem_recarga.distancia_percorrida
+                distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+                veiculo.atualizar_autonomia(distancia_avancada)
+                
+                # Atualizar localização enquanto viaja
+                if veiculo.viagem_recarga.localizacao_atual:
+                    veiculo._localizacao_atual = veiculo.viagem_recarga.localizacao_atual
+                
+                if concluida:
+                    veiculo.concluir_viagem_recarga()
+                    veiculos_chegaram_posto.append((veiculo_id, veiculo))
+                continue
+            
+            # Atualizar viagens normais
+            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            for v in concluidas:
+                viagens_concluidas.append((veiculo_id, veiculo, v))
+        
+        return (viagens_concluidas, veiculos_chegaram_posto)
+    
+    # -------------------- Processamento de Pedidos --------------------
+    
+    def obter_nomes_nos_pedido(self, pedido):
+        """Obtém os nomes dos nós de origem e destino de um pedido.
+        
+        Args:
+            pedido: Pedido a processar
+            
+        Returns:
+            Tupla (origem_nome, destino_nome)
+        """
+        origem_pedido_nome = self.grafo.getNodeName(pedido.origem)
+        destino_nome = self.grafo.getNodeName(pedido.destino)
+        return (origem_pedido_nome, destino_nome)
+    
+    def obter_rota_atual_veiculo(self, veiculo):
+        """Obtém a rota total atual do veículo."""
+        return veiculo.rota_total_viagens()
+    
+    
+    def listar_postos_por_tipo(self, tipo_posto):
+        """Lista todos os postos de um tipo específico.
+        
+        Args:
+            tipo_posto: Tipo de posto (TipoNodo)
+            
+        Returns:
+            Lista de nomes de postos
+        """
+        return self.grafo.get_nodes_by_tipo(tipo_posto)
+
+
