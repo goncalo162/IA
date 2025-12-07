@@ -54,8 +54,16 @@ class AlocadorBase(ABC):
         return veiculo.capacidade_passageiros >= veiculo.numero_passageiros + pedido.numero_passageiros
 
     def _verificar_autonomia(self, veiculo: Veiculo, distancia: float) -> bool:
-        """Verifica se o veículo tem autonomia suficiente."""
-        return veiculo.autonomia_atual >= distancia
+        """Verifica se o veículo tem autonomia suficiente para a distância.
+        
+        Args:
+            veiculo: Veículo a verificar
+            distancia: Distância total que o veículo precisa percorrer (até cliente + viagem)
+            
+        Returns:
+            True se o veículo tem autonomia suficiente
+        """
+        return veiculo.autonomia_suficiente_para(distancia)
 
     def _veiculo_passa_pela_origem(self, veiculo: Veiculo, pedido: Pedido, grafo: Grafo) -> bool:
         """Quando veículo está em andamento, valida se a sua rota restante passa pela origem do pedido.

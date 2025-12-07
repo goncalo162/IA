@@ -15,6 +15,7 @@ from infra.gestaoAmbiente import GestaoAmbiente
 from infra.metricas import Metricas
 from infra.evento import GestorEventos, TipoEvento
 from infra.grafo.aresta import NivelTransito
+from infra.entidades.veiculos import EstadoVeiculo
 
 # Constante: velocidade máxima com sincronização em tempo real
 VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA', 100.0))
@@ -452,6 +453,91 @@ class Simulador:
             callback_alterar_transito=self._alterar_transito
         )
         self._log(f"Agendando {num_eventos} eventos de trânsito...")
+    
+    def _agendar_recarga(self, veiculo):
+        """Agenda recarga/abastecimento de um veículo.
+        
+        Args:
+            veiculo: Veículo que precisa de recarga
+        """
+        # Verificar se já está num posto adequado
+        if veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):
+            # Já está num posto, pode iniciar recarga imediatamente
+            self.gestor_eventos.agendar_evento(
+                tempo=self.tempo_simulacao,
+                tipo=TipoEvento.INICIO_RECARGA,
+                callback=self._iniciar_recarga,
+                dados={'veiculo': veiculo},
+                prioridade=5
+            )
+        else:
+            # Precisa ir até um posto - usar método local do simulador
+            posto_info = self._encontrar_posto_mais_proximo(veiculo)
+            
+            if not posto_info:
+                tipo_posto = veiculo.tipo_posto_necessario()
+                self._log(f"  [red]✗[/] Nenhum posto de tipo {tipo_posto.name} encontrado para veículo {veiculo.id_veiculo}")
+                self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
+                return
+            
+            posto_nome, rota, distancia = posto_info
+            
+            # Verificar se tem autonomia para chegar ao posto
+            if not veiculo.autonomia_suficiente_para(distancia, margem_seguranca=0):
+                self._log(f"  [red]✗[/] Veículo {veiculo.id_veiculo} não tem autonomia para chegar ao posto mais próximo ({distancia:.1f} km)")
+                # Veículo ficou sem autonomia - registar como indisponível
+                veiculo.estado = EstadoVeiculo.INDISPONIVEL
+                self.metricas.registar_veiculo_sem_autonomia(veiculo.id_veiculo)
+                return
+            
+            # Iniciar viagem até o posto
+            if veiculo.iniciar_viagem_recarga(rota, posto_nome, distancia, self.tempo_simulacao, self.ambiente.grafo):
+                self.viagens_ativas[veiculo.id_veiculo] = veiculo
+                tempo_viagem = self.ambiente._calcular_tempo_rota(rota)
+                self._log(f"  [INFO] Veículo {veiculo.id_veiculo} a caminho do posto '{posto_nome}' ({distancia:.1f} km, ~{tempo_viagem*60:.1f} min)")
+            else:
+                self._log(f"  [red]✗[/] Falha ao iniciar viagem de recarga para veículo {veiculo.id_veiculo}")
+    
+    def _encontrar_posto_mais_proximo(self, veiculo):
+        """Encontra o posto de abastecimento/recarga mais próximo do veículo.
+        
+        Args:
+            veiculo: Veículo que precisa de recarga
+            
+        Returns:
+            Tupla (nome_posto, rota, distância) ou None se não encontrar
+        """
+        tipo_posto = veiculo.tipo_posto_necessario()
+        postos = self.ambiente.grafo.get_nodes_by_tipo(tipo_posto)
+        
+        if not postos:
+            return None
+        
+
+        #NOTA: O melhor posto é sempre o que tem menor distancia da localização atual do veiculo
+        localizacao_atual = veiculo.localizacao_atual
+        melhor_posto = None
+        melhor_rota = None
+        menor_distancia = float('inf')
+        
+
+
+        for posto in postos:
+            try:
+                rota = self.navegador.calcular_rota(self.ambiente.grafo, localizacao_atual, posto)
+                if rota and len(rota) >= 2:
+                    distancia = self.ambiente._calcular_distancia_rota(rota)
+                    if distancia < menor_distancia:
+                        menor_distancia = distancia
+                        melhor_posto = posto
+                        melhor_rota = rota
+            except Exception:
+                continue
+        
+        if melhor_posto:
+            return (melhor_posto, melhor_rota, menor_distancia)
+        
+        return None
 
     def _atualizar_viagens_ativas(self, tempo_passo_horas: float = None):
         """Atualiza o progresso de todas as viagens em curso.
@@ -467,17 +553,56 @@ class Simulador:
             tempo_passo_horas = self.passo_tempo.total_seconds() / 3600
 
         viagens_concluidas = []
+        veiculos_chegaram_posto = []
 
         for veiculo_id, veiculo in list(self.viagens_ativas.items()):
+            # Verificar se é viagem de recarga
+            if veiculo.viagem_recarga and veiculo.viagem_recarga.viagem_ativa:
+                distancia_antes = veiculo.viagem_recarga.distancia_percorrida
+                concluida = veiculo.viagem_recarga.atualizar_progresso(tempo_passo_horas)
+                distancia_depois = veiculo.viagem_recarga.distancia_percorrida
+                distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+                veiculo.atualizar_autonomia(distancia_avancada)
+                
+                if concluida:
+                    veiculos_chegaram_posto.append((veiculo_id, veiculo))
+
+                # TODO: nao devia ser continue, porque das duas uma, ou so tem a viagem de rearga ou entao o posto de reabastecimento esta dentro das outras viagens
+                #  Continue para não processar viagens normais enquanto está em viagem de recarga
+                continue
+            
+            # Atualizar viagens normais de pedidos (só se não estiver em viagem de recarga)
             concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
             for v in concluidas:
                 viagens_concluidas.append((veiculo_id, veiculo, v))
+
+        # Processar veículos que chegaram ao posto
+        for veiculo_id, veiculo in veiculos_chegaram_posto:
+            veiculo.concluir_viagem_recarga()
+            self._log(f"[INFO] Veículo {veiculo.id_veiculo} chegou ao posto em {veiculo.localizacao_atual}")
+            
+            # Verificar se pode reabastecer neste local
+            if veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):
+                # Agendar início da recarga
+                self.gestor_eventos.agendar_evento(
+                    tempo=self.tempo_simulacao,
+                    tipo=TipoEvento.INICIO_RECARGA,
+                    callback=self._iniciar_recarga,
+                    dados={'veiculo': veiculo},
+                    prioridade=5
+                )
+                # NÃO remover de viagens_ativas ainda - será removido após recarga concluir
+            else:
+                self._log(f"  [yellow]![/] Veículo {veiculo.id_veiculo} não pode reabastecer em {veiculo.localizacao_atual}")
+                # Remover da lista de viagens ativas se não vai reabastecer
+                if veiculo_id in self.viagens_ativas and not veiculo.viagem_ativa:
+                    del self.viagens_ativas[veiculo_id]
 
         # Processar viagens concluídas (por viagem específica)
         for veiculo_id, veiculo, viagem in viagens_concluidas:
             self._concluir_viagem(veiculo, viagem)
             # Remover veículo da lista ativa apenas se não houver mais viagens ativas
-            if not veiculo.viagem_ativa and veiculo_id in self.viagens_ativas: #REVER ISTO porque sem a segunda condição nao funciona sempre, mas devia, ou seja, pode estar a apagar em sitios que nao devia
+            if not veiculo.viagem_ativa and veiculo_id in self.viagens_ativas:
                     del self.viagens_ativas[veiculo_id]
 
     def _concluir_viagem(self, veiculo, viagem):
@@ -488,6 +613,13 @@ class Simulador:
 
         log_msg = f"[green][/] Viagem concluída: Pedido #{pedido_id} | Veículo {veiculo.id_veiculo} em {veiculo.localizacao_atual}"
         self._log(log_msg)
+        
+        # Verificar necessidade de recarga após concluir viagem 
+        #TODO: veiculo apenas está a verificar recarga se nao tiver mais viagens ativas, mas e se tiver mais viagens ativas e precisar de recarga?
+        if not veiculo.viagem_ativa and veiculo.precisa_reabastecer():
+            autonomia_pct = veiculo.percentual_autonomia_atual
+            self._log(f"  [yellow]AVISO[/] Veículo {veiculo.id_veiculo} precisa recarga (autonomia: {veiculo.autonomia_atual:.1f}/{veiculo.autonomia_maxima} km, {autonomia_pct:.1f}%)")
+            self._agendar_recarga(veiculo)
 
     def _processar_pedido(self, pedido):
         """Processa um pedido individual no modo temporal."""
@@ -647,3 +779,61 @@ class Simulador:
             # Atualizar display com a rota desta nova viagem
             nova_viagem_rota = veiculo.viagens[-1].rota if veiculo.viagens else []
             self.display.atualizar(pedido, veiculo, nova_viagem_rota)
+    
+    def _iniciar_recarga(self, veiculo):
+        """Processa o início de recarga/abastecimento de um veículo.
+        
+        Args:
+            veiculo: Veículo a reabastecer
+        """
+        # Verificar se está num posto adequado
+        #NOTA: isto está a ser verificado antes de chamar esta função, ou seja, se não estiver num posto adequado, nem devia chegar aqui
+        #decidir se é para deixar ou não esta verificação aqui, diria para verificar aqui assim, nao tinhna que verificar la em cima
+        if not veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):
+            tipo_posto = veiculo.tipo_posto_necessario()
+            self._log(f"  [red]✗[/] Veículo {veiculo.id_veiculo} não está num {tipo_posto.name}. Localização: {veiculo.localizacao_atual}")
+            return
+        
+        veiculo.iniciar_recarga(self.tempo_simulacao, veiculo.localizacao_atual)
+        
+        # Calcular tempo de recarga
+        tempo_recarga_minutos = veiculo.tempoReabastecimento()
+        tempo_fim_recarga = self.tempo_simulacao + timedelta(minutes=tempo_recarga_minutos)
+        
+        self._log(f"[INFO] Veículo {veiculo.id_veiculo} iniciou recarga em {veiculo.localizacao_abastecimento}")
+        self._log(f"    Tempo estimado: {tempo_recarga_minutos:.1f} min | Fim previsto: {tempo_fim_recarga.strftime('%H:%M:%S')}")
+        
+        # Agendar fim da recarga
+        self.gestor_eventos.agendar_evento(
+            tempo=tempo_fim_recarga,
+            tipo=TipoEvento.FIM_RECARGA,
+            callback=self._finalizar_recarga,
+            dados={'veiculo': veiculo, 'tempo_recarga': tempo_recarga_minutos},
+            prioridade=5
+        )
+    
+    def _finalizar_recarga(self, veiculo, tempo_recarga: float):
+        """Processa o fim de recarga/abastecimento de um veículo.
+        
+        Args:
+            veiculo: Veículo que terminou a recarga
+            tempo_recarga: Tempo gasto em recarga (minutos)
+        """
+        autonomia_anterior = veiculo.autonomia_atual
+        veiculo.reabastecer()
+        
+        self._log(f"[green]OK[/] Veículo {veiculo.id_veiculo} terminou recarga")
+        self._log(f"    Autonomia: {autonomia_anterior} km -> {veiculo.autonomia_atual} km ({veiculo.percentual_autonomia_atual:.1f}%)")
+        
+        # Registrar métricas de recarga
+        autonomia_recarregada = veiculo.autonomia_atual - autonomia_anterior
+        self.metricas.registar_recarga(
+            veiculo_id=veiculo.id_veiculo,
+            tempo_recarga=tempo_recarga,
+            autonomia_recarregada=autonomia_recarregada,
+            localizacao=veiculo.localizacao_atual
+        )
+        
+        # Remover veículo de viagens_ativas se não tiver mais viagens
+        if not veiculo.viagem_ativa and veiculo.id_veiculo in self.viagens_ativas:
+            del self.viagens_ativas[veiculo.id_veiculo]
