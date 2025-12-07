@@ -472,6 +472,8 @@ class Simulador:
         
         # Processar veículos que chegaram ao posto
         for veiculo_id, veiculo in veiculos_chegaram_posto:
+            # Concluir a viagem de recarga (atualiza localização para o posto)
+            veiculo.concluir_viagem_recarga()
             self._log(f"[INFO] Veículo {veiculo.id_veiculo} chegou ao posto em {veiculo.localizacao_atual}")
             
             if veiculo.pode_reabastecer_em(veiculo.localizacao_atual, self.ambiente.grafo):

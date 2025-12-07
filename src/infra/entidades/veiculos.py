@@ -222,8 +222,10 @@ class Veiculo(ABC):
 
     @property
     def viagem_ativa(self):
-        """Indica se há alguma viagem ativa neste veículo."""
-        return any(v.viagem_ativa for v in self.viagens)
+        """Indica se há alguma viagem ativa neste veículo (pedidos ou recarga)."""
+        tem_viagem_pedido = any(v.viagem_ativa for v in self.viagens)
+        tem_viagem_recarga = self.viagem_recarga is not None and self.viagem_recarga.viagem_ativa
+        return tem_viagem_pedido or tem_viagem_recarga
 
     @property
     def aceita_ridesharing(self) -> bool:
@@ -294,7 +296,7 @@ class Veiculo(ABC):
         self.estado = EstadoVeiculo.EM_ANDAMENTO
         return True
 
-    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float) -> List[Viagem]:
+    def atualizar_progresso_viagem(self, tempo_decorrido_horas: float):
         """Atualiza o progresso de todas as viagens ativas e autonomia proporcional.
 
         Retorna lista de viagens concluídas neste passo.
@@ -302,7 +304,24 @@ class Veiculo(ABC):
         NOTA: A viagem de recarga é processada separadamente em GestaoAmbiente.atualizar_viagens_ativas()
         """
         viagens_concluidas: List[Viagem] = []
+        chegou_posto = False
         distancia_total_avancada = 0.0
+                
+        # Atualizar viagem de recarga se existir
+        if self.viagem_recarga and self.viagem_recarga.viagem_ativa:
+            distancia_antes = self.viagem_recarga.distancia_percorrida
+            concluida = self.viagem_recarga.atualizar_progresso(tempo_decorrido_horas)
+            distancia_depois = self.viagem_recarga.distancia_percorrida
+            distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+            distancia_total_avancada += distancia_avancada
+            
+            # Atualizar localização enquanto viaja
+            if self.viagem_recarga.localizacao_atual:
+                self._localizacao_atual = self.viagem_recarga.localizacao_atual
+            
+            if concluida:
+                chegou_posto = True
+                
 
         # Atualizar viagens de pedidos
         for v in list(self.viagens):
@@ -319,7 +338,7 @@ class Veiculo(ABC):
         if distancia_total_avancada > 0:
             self.atualizar_autonomia(distancia_total_avancada)
 
-        return viagens_concluidas
+        return viagens_concluidas, chegou_posto
 
     def concluir_viagem(self, viagem: Viagem):
         """Finaliza apenas a viagem fornecida.

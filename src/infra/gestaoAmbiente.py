@@ -342,27 +342,12 @@ class GestaoAmbiente:
         veiculos_chegaram_posto = []
         
         for veiculo_id, veiculo in list(viagens_ativas.items()):
-            # Processar viagem de recarga
-            if veiculo.viagem_recarga and veiculo.viagem_recarga.viagem_ativa:
-                distancia_antes = veiculo.viagem_recarga.distancia_percorrida
-                concluida = veiculo.viagem_recarga.atualizar_progresso(tempo_passo_horas)
-                distancia_depois = veiculo.viagem_recarga.distancia_percorrida
-                distancia_avancada = max(0.0, distancia_depois - distancia_antes)
-                veiculo.atualizar_autonomia(distancia_avancada)
-                
-                # Atualizar localização enquanto viaja
-                if veiculo.viagem_recarga.localizacao_atual:
-                    veiculo._localizacao_atual = veiculo.viagem_recarga.localizacao_atual
-                
-                if concluida:
-                    veiculo.concluir_viagem_recarga()
-                    veiculos_chegaram_posto.append((veiculo_id, veiculo))
-                continue
-            
-            # Atualizar viagens normais
-            concluidas = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+
+            concluidas, chegou_posto = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
             for v in concluidas:
                 viagens_concluidas.append((veiculo_id, veiculo, v))
+            if chegou_posto:
+                veiculos_chegaram_posto.append((veiculo_id, veiculo))
         
         return (viagens_concluidas, veiculos_chegaram_posto)
     
