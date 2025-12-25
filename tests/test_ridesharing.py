@@ -176,7 +176,13 @@ def test_progress_updates_all_and_conclude_single():
     veiculo.iniciar_viagem(p1, rota_client, rota_trip2, 0.0, dist_trip2, datetime.now(), grafo)
     veiculo.iniciar_viagem(p2, rota_client, rota_trip2, 0.0, dist_trip2, datetime.now(), grafo)
 
-    concluidas = veiculo.atualizar_progresso_viagem(0.2)
+    resultado = veiculo.atualizar_progresso_viagem(0.2)
+    # O método agora retorna (viagens_concluidas, chegou_posto)
+    if isinstance(resultado, tuple):
+        concluidas, _ = resultado
+    else:
+        concluidas = resultado
+    
     assert isinstance(concluidas, list), (
         f"Retorno deveria ser lista, obtido {type(concluidas)}. Estado: {_state_snapshot(veiculo, 'progress 0.2')}"
     )
@@ -184,7 +190,13 @@ def test_progress_updates_all_and_conclude_single():
         f"Lista deve conter Viagem ou ser vazia. Concluidas={concluidas}. Estado: {_state_snapshot(veiculo, 'progress 0.2')}"
     )
 
-    concluidas = veiculo.atualizar_progresso_viagem(5.0)
+    resultado = veiculo.atualizar_progresso_viagem(5.0)
+    # Desempacotar resultado
+    if isinstance(resultado, tuple):
+        concluidas, _ = resultado
+    else:
+        concluidas = resultado
+    
     if concluidas:
         v = concluidas[0]
         pax_before = veiculo.numero_passageiros
