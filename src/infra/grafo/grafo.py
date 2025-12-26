@@ -303,10 +303,13 @@ class Grafo:
                 n["tipo"], str) else TipoNodo(n["tipo"])
             x = n.get("x")
             y = n.get("y")
-            node = Node(n["name"], id=n.get("id", -1), tipo=tipo, x=x, y=y)
+            atr = n.get("atratividade", 0)
+            # Passar atratividade para o Node se estiver presente no ficheiro
+            node = Node(n["name"], id=n.get("id", -1), tipo=tipo, x=x, y=y, atratividade=atr)
             g.m_nodes.append(node)
             g.m_graph[node.getName()] = []
             nodes_map[node.getName()] = node
+            
 
         # Criar arestas
         for e in data["edges"]:

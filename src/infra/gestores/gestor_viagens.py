@@ -69,7 +69,7 @@ class GestorViagens:
             return []
 
         # Atualizar progresso de viagens usando o ambiente
-        viagens_concluidas, veiculos_chegaram_posto = self.ambiente.atualizar_viagens_ativas(
+        viagens_concluidas, veiculos_chegaram_posto, veiculos_chegaram_reposicionamento = self.ambiente.atualizar_viagens_ativas(
             self.viagens_ativas,
             tempo_passo_horas
         )
@@ -87,6 +87,14 @@ class GestorViagens:
                     self.gestor_recargas.verificar_e_agendar_recarga(
                         veiculo, tempo_simulacao, fim_viagem=True
                     )
+
+        # Processar veículos que chegaram a destino de reposicionamento
+        for veiculo_id, veiculo in veiculos_chegaram_reposicionamento:
+            veiculo.concluir_viagem_reposicionamento()
+            
+            # Remover veículo da lista ativa se não houver mais viagens
+            if not veiculo.viagem_ativa:
+                self.remover_viagem(veiculo_id)
 
         # Retornar veículos que chegaram a postos (para o gestor de recargas processar)
         return veiculos_chegaram_posto

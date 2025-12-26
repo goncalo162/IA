@@ -31,6 +31,7 @@ class Veiculo(ABC):
         # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
         self.viagens: List[Viagem] = []
         self.viagem_recarga = None  # Viagem até posto de abastecimento/recarga
+        self.viagem_reposicionamento = None  # Viagem de reposicionamento proativo
 
         # Controlo de recarga/abastecimento
         self._autonomia_critica_percentual = autonomia_critica_percentual  # % mínima de autonomia
@@ -129,6 +130,7 @@ class Veiculo(ABC):
         if self.viagem_recarga:
             self._localizacao_atual = self.viagem_recarga.destino_posto
             self.viagem_recarga = None
+            self.estado = EstadoVeiculo.DISPONIVEL
 
     def pode_reabastecer_em(self, localizacao: str, grafo) -> bool:
         """Verifica se o veículo pode reabastecer na localização atual.
@@ -231,10 +233,11 @@ class Veiculo(ABC):
 
     @property
     def viagem_ativa(self):
-        """Indica se há alguma viagem ativa neste veículo (pedidos ou recarga)."""
+        """Indica se há alguma viagem ativa neste veículo (pedidos, recarga ou reposicionamento)."""
         tem_viagem_pedido = any(v.viagem_ativa for v in self.viagens)
         tem_viagem_recarga = self.viagem_recarga is not None and self.viagem_recarga.viagem_ativa
-        return tem_viagem_pedido or tem_viagem_recarga
+        tem_viagem_reposicionamento = self.viagem_reposicionamento is not None and self.viagem_reposicionamento.viagem_ativa
+        return tem_viagem_pedido or tem_viagem_recarga or tem_viagem_reposicionamento
 
     @property
     def aceita_ridesharing(self) -> bool:
@@ -282,19 +285,28 @@ class Veiculo(ABC):
         Returns:
             True se a viagem foi iniciada com sucesso
         """
+        if not rota or len(rota) < 2:
+            return False
+
         # Criar viagem de reposicionamento (sem pedido associado)
-        viagem = ViagemReposicionamento(
+        self.viagem_reposicionamento = ViagemReposicionamento(
             rota=rota,
             distancia_total=distancia,
             tempo_inicio=tempo_simulacao,
             grafo=grafo
         )
 
-        # Adicionar viagem ao veículo e mudar estado
-        self.viagens.append(viagem)
+        # Mudar estado
         self.estado = EstadoVeiculo.EM_ANDAMENTO
 
         return True
+    
+    def concluir_viagem_reposicionamento(self):
+        """Finaliza a viagem de reposicionamento quando o veículo chega ao destino."""
+        if self.viagem_reposicionamento:
+            self._localizacao_atual = self.viagem_reposicionamento.destino
+            self.viagem_reposicionamento = None
+            self.estado = EstadoVeiculo.DISPONIVEL
     
 
     def iniciar_viagem(self, pedido,
@@ -341,6 +353,7 @@ class Veiculo(ABC):
         """
         viagens_concluidas: List[Viagem] = []
         chegou_posto = False
+        chegou_destino_reposicionamento = False
         distancia_total_avancada = 0.0
 
         # Atualizar viagem de recarga se existir
@@ -358,6 +371,21 @@ class Veiculo(ABC):
             if concluida:
                 chegou_posto = True
 
+        # Atualizar viagem de reposicionamento se existir
+        if self.viagem_reposicionamento and self.viagem_reposicionamento.viagem_ativa:
+            distancia_antes = self.viagem_reposicionamento.distancia_percorrida
+            concluida = self.viagem_reposicionamento.atualizar_progresso(tempo_decorrido_horas)
+            distancia_depois = self.viagem_reposicionamento.distancia_percorrida
+            distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+            distancia_total_avancada += distancia_avancada
+
+            # Atualizar localização enquanto viaja
+            if self.viagem_reposicionamento.localizacao_atual:
+                self._localizacao_atual = self.viagem_reposicionamento.localizacao_atual
+
+            if concluida:
+                chegou_destino_reposicionamento = True
+
         # Atualizar viagens de pedidos
         for v in list(self.viagens):
             if not v.viagem_ativa:
@@ -373,7 +401,7 @@ class Veiculo(ABC):
         if distancia_total_avancada > 0:
             self.atualizar_autonomia(distancia_total_avancada)
 
-        return viagens_concluidas, chegou_posto
+        return viagens_concluidas, chegou_posto, chegou_destino_reposicionamento
 
     def concluir_viagem(self, viagem: Viagem):
         """Finaliza apenas a viagem fornecida.

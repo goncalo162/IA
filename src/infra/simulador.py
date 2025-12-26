@@ -26,9 +26,6 @@ from infra.logger import SimuladorLogger
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Importar gestores modulares
-
-# Importar políticas
 
 # Constante: velocidade máxima com sincronização em tempo real
 VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA', 100.0))

@@ -336,23 +336,26 @@ class GestaoAmbiente:
             tempo_passo_horas: Tempo simulado decorrido neste passo, em horas
 
         Returns:
-            Tupla (viagens_concluidas, veiculos_chegaram_posto)
+            Tupla (viagens_concluidas, veiculos_chegaram_posto, veiculos_chegaram_reposicionamento)
         """
         if not viagens_ativas:
-            return ([], [])
+            return ([], [], [])
 
         viagens_concluidas = []
         veiculos_chegaram_posto = []
+        veiculos_chegaram_reposicionamento = []
 
         for veiculo_id, veiculo in list(viagens_ativas.items()):
 
-            concluidas, chegou_posto = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            concluidas, chegou_posto, chegou_reposicionamento = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
             for v in concluidas:
                 viagens_concluidas.append((veiculo_id, veiculo, v))
             if chegou_posto:
                 veiculos_chegaram_posto.append((veiculo_id, veiculo))
+            if chegou_reposicionamento:
+                veiculos_chegaram_reposicionamento.append((veiculo_id, veiculo))
 
-        return (viagens_concluidas, veiculos_chegaram_posto)
+        return (viagens_concluidas, veiculos_chegaram_posto, veiculos_chegaram_reposicionamento)
 
     # -------------------- Processamento de Pedidos --------------------
 

@@ -118,6 +118,7 @@ class ViagemReposicionamento(ViagemBase):
                  velocidade_media: float = 50.0):
 
         super().__init__(rota, distancia_total, tempo_inicio, grafo, velocidade_media)
+        self.pedido = None  # Reposicionamentos não têm pedido associado
 
     @property
     def destino(self):
@@ -128,6 +129,31 @@ class ViagemReposicionamento(ViagemBase):
         if self.indice_segmento_atual >= len(self.segmentos):
             return self.destino
         return self.segmentos[self.indice_segmento_atual]['origem']
+
+    def aresta_na_rota_restante(self, nome_aresta: str, grafo) -> bool:
+        """Verifica se uma aresta está na rota restante.
+        
+        Args:
+            nome_aresta: Nome da aresta a verificar
+            grafo: Grafo para obter informação das arestas
+            
+        Returns:
+            True se a aresta está na rota restante, False caso contrário
+        """
+        if not self._viagem_ativa:
+            return False
+            
+        # Calcular rota restante a partir do segmento atual
+        rota_restante = self.rota[self.indice_segmento_atual:] if self.indice_segmento_atual < len(self.rota) else []
+        
+        if len(rota_restante) < 2:
+            return False
+
+        for i in range(len(rota_restante) - 1):
+            aresta = grafo.getEdge(rota_restante[i], rota_restante[i + 1])
+            if aresta and aresta.getNome() == nome_aresta:
+                return True
+        return False
 
 
 class Viagem(ViagemBase):

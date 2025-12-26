@@ -198,9 +198,9 @@ def test_progress_updates_all_and_conclude_single():
     veiculo.iniciar_viagem(p2, rota_client, rota_trip2, 0.0, dist_trip2, datetime.now(), grafo)
 
     resultado = veiculo.atualizar_progresso_viagem(0.2)
-    # O método agora retorna (viagens_concluidas, chegou_posto)
+    # O método agora retorna (viagens_concluidas, chegou_posto, chegou_reposicionamento)
     if isinstance(resultado, tuple):
-        concluidas, _ = resultado
+        concluidas = resultado[0]
     else:
         concluidas = resultado
 
@@ -214,9 +214,9 @@ def test_progress_updates_all_and_conclude_single():
     )
 
     resultado = veiculo.atualizar_progresso_viagem(5.0)
-    # Desempacotar resultado
+    # Desempacotar resultado (viagens_concluidas, chegou_posto, chegou_reposicionamento)
     if isinstance(resultado, tuple):
-        concluidas, _ = resultado
+        concluidas = resultado[0]
     else:
         concluidas = resultado
 

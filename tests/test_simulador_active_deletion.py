@@ -34,14 +34,15 @@ class FakeVeiculo:
     def atualizar_progresso_viagem(self, tempo_decorrido_horas):
         # Return a tuple (list of fake concluded trips, chegou_posto) based on the next count
         if not self._concluded_counts:
-            return [], False
+            return [], False, False
         count = self._concluded_counts.pop(0)
         # Criar viagens fake com pedido_id
         concluidas = [FakeViagem(pedido_id=i) for i in range(count)]
         # If count > 0, simulate that after processing, there are no more active trips
         if count > 0 and not self._concluded_counts:
             self._active = False
-        return concluidas, False  # Retornar tupla (viagens_concluidas, chegou_posto)
+        # Retornar tupla (viagens_concluidas, chegou_posto, chegou_reposicionamento)
+        return concluidas, False, False
 
     def concluir_viagem(self, viagem):
         # If no more concluded trips scheduled, mark inactive
@@ -59,13 +60,16 @@ class FakeAmbiente:
         # Simular comportamento do ambiente
         viagens_concluidas = []
         veiculos_chegaram_posto = []
+        veiculos_chegaram_reposicionamento = []
 
         for veiculo_id, veiculo in list(viagens_ativas.items()):
-            concluidas, chegou_posto = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
+            concluidas, chegou_posto, chegou_reposicionamento = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
             for viagem in concluidas:
                 viagens_concluidas.append((veiculo_id, veiculo, viagem))
+            if chegou_reposicionamento:
+                veiculos_chegaram_reposicionamento.append((veiculo_id, veiculo))
 
-        return viagens_concluidas, veiculos_chegaram_posto
+        return viagens_concluidas, veiculos_chegaram_posto, veiculos_chegaram_reposicionamento
 
 
 def test_no_deletion_when_still_active():
