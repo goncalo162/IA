@@ -48,7 +48,7 @@ class RecargaAutomaticaPolicy(RecargaPolicy):
             return False
         
         # Verificar se precisa reabastecer
-        return veiculo.precisa_reabastecer() if hasattr(veiculo, 'precisa_reabastecer') else False
+        return veiculo.precisa_reabastecer()
 
 
 class SemRecargaPolicy(RecargaPolicy):

@@ -1,16 +1,14 @@
 """
-Gestor de viagens: PROPRIETÁRIO EXCLUSIVO de viagens_ativas.
-Gerencia todo o ciclo de vida: adição, atualização, conclusão e remoção.
+Gestor de viagens: proprietário exclusivo de viagens_ativas.
+Gere todo o ciclo de vida: adição, atualização, conclusão e remoção.
 """
 from typing import Dict, List, Tuple
 
 
 class GestorViagens:
     """
-    Responsável EXCLUSIVO por gerenciar viagens_ativas.
+    Responsável por gerir viagens_ativas.
     
-    Princípio: Este gestor é o ÚNICO que pode adicionar/remover do dicionário.
-    Outros gestores apenas INFORMAM sobre eventos, não modificam diretamente.
     """
     
     def __init__(self, ambiente, metricas, logger):
@@ -36,7 +34,7 @@ class GestorViagens:
         """
         Adiciona um veículo às viagens ativas.
         
-        Este é o ÚNICO método que adiciona ao dicionário.
+        Este é o único método que adiciona ao dicionário.
         
         Args:
             veiculo: Veículo com viagem iniciada
@@ -47,7 +45,7 @@ class GestorViagens:
         """
         Remove um veículo das viagens ativas.
         
-        Este é o ÚNICO método que remove do dicionário.
+        Este é o único método que remove do dicionário.
         
         Args:
             veiculo_id: ID do veículo a remover

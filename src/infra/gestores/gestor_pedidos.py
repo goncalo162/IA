@@ -62,7 +62,7 @@ class GestorPedidos:
         if veiculo is None:
             return False
         
-        self.logger.log(f"  [green]✓[/] Veículo alocado: {veiculo.id_veiculo}")
+        self.logger.log(f"  [✓][/] Veículo alocado: {veiculo.id_veiculo}")
         self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
         
         # 3. Ajustar rotas para ride-sharing se aplicável
@@ -104,7 +104,7 @@ class GestorPedidos:
         )
         
         self.logger.log(
-            f"  [green]✓[/] Viagem iniciada - ETA: "
+            f"  [✓][/] Viagem iniciada - ETA: "
             f"{metricas_viagem['tempo_ate_cliente'] + metricas_viagem['tempo_viagem']:.1f} min"
         )
         
@@ -132,7 +132,7 @@ class GestorPedidos:
         
         if rota_viagem is None or len(rota_viagem) < 2:
             self.logger.log(
-                f"  [red]✗[/] Rota pedido não encontrada ({origem_nome} -> {destino_nome})"
+                f"  [X][/] Rota pedido não encontrada ({origem_nome} -> {destino_nome})"
             )
             self.metricas.registar_pedido_rejeitado(pedido.id, "Rota pedido não encontrada")
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
@@ -166,7 +166,7 @@ class GestorPedidos:
         
         if veiculo is None:
             self.logger.log(
-                f"  [yellow]![/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}"
+                f"  [!][/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}"
             )
             self.metricas.registar_pedido_rejeitado(
                 pedido.id, "Sem veículos com autonomia suficiente"

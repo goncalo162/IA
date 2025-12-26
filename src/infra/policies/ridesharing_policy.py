@@ -46,9 +46,11 @@ class SimplesRideSharingPolicy(RideSharingPolicy):
     def ajustar_rotas(self, veiculo, origem_nome: str, destino_nome: str, 
                      navegador, grafo) -> Optional[Tuple[List[str], float]]:
         """
-        Ajusta rotas para ride-sharing sem permitir desvios significativos.
+        Ajusta rotas para ride-sharing sem permitir desvios.
         
-        A rota do novo pedido deve ser compatível com a rota atual do veículo.
+        A rota do novo pedido deve ser compatível com a rota atual do veículo. 
+        Isto é, a origem do pedido deve estar na rota atual do veículo, e o destino
+        do pedido deve ser alcançável seguindo a rota atual ou estendendo-a.
         """
         # Obter rota atual do veículo
         rota_atual = veiculo.rota_total_viagens() if hasattr(veiculo, 'rota_total_viagens') else None

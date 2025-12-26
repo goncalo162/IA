@@ -6,7 +6,7 @@ from typing import Dict, List, Set
 
 class GestorRotas:
     """
-    Responsável por gerenciar recálculos de rotas quando ocorrem alterações no grafo.
+    Responsável por gerir recálculos de rotas quando ocorrem alterações no grafo.
     
     Identifica viagens afetadas e recalcula rotas usando o navegador.
     """

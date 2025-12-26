@@ -10,10 +10,9 @@ from infra.policies.recarga_policy import RecargaPolicy, RecargaAutomaticaPolicy
 
 class GestorRecargas:
     """
-    Responsável por gerenciar o processo de recarga/abastecimento de veículos.
+    Responsável por gerir o processo de recarga/abastecimento de veículos.
     
     Coordena agendamento, início e término de recargas conforme política configurada.
-    NÃO modifica viagens_ativas - notifica via callbacks quando veículos precisam ser adicionados/removidos.
     """
     
     def __init__(self, ambiente, navegador, gestor_eventos, metricas, logger,
@@ -175,9 +174,9 @@ class GestorRecargas:
                 f"  [red]✗[/] Falha ao iniciar viagem de recarga para veículo {veiculo.id_veiculo}"
             )
     
-    def _encontrar_posto_mais_proximo(self, veiculo, postos):
+    def _encontrar_posto_mais_proximo(self, veiculo, postos): 
         """
-        Encontra o posto mais próximo do veículo.
+        Encontra o posto mais próximo do veículo, utilizando o navegador para calcular rotas.
         
         Args:
             veiculo: Veículo que precisa de recarga
