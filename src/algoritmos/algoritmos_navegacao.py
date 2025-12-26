@@ -207,3 +207,85 @@ class NavegadorAEstrela(NavegadorBase):
                 )
 
         return None  # Sem caminho
+
+#NOTA: REVER ESTE ALGORITMO
+class NavegadorBidirecional(NavegadorBase):
+    """
+    Procura bidirecional: expande simultaneamente a partir da origem e do destino.
+
+    Funciona melhor em grafos não dirigidos; em grafos dirigidos a expansão "para trás"
+    utiliza uma verificação por predecessores (mais custosa).
+    """
+
+    def nome_algoritmo(self) -> str:
+        return "Bidirecional"
+
+    def _predecessors(self, grafo: Grafo, nodo: str):
+        """Retorna lista de tuplos (nome_nodo, aresta) que apontam para `nodo`.
+
+        Nota: Grafo não fornece API direta para predecessores; percorremos as
+        adjacências. Em grafos não dirigidos isso é equivalente a neighbours.
+        """
+        preds = []
+        try:
+            for n, adj in grafo.m_graph.items():
+                for (dest, aresta) in adj:
+                    if dest == nodo:
+                        preds.append((n, aresta))
+        except Exception:
+            return []
+        return preds
+
+    def calcular_rota(self, grafo: Grafo, origem: str, destino: str):
+        if origem == destino:
+            return [origem]
+
+        # fronteiras: mapa nodo -> caminho (lista de nomes) desde a origem/destino
+        fronteira_frente = {origem: [origem]}
+        fronteira_tras = {destino: [destino]}
+
+        visitados_frente = {origem: [origem]}
+        visitados_tras = {destino: [destino]}
+
+        while fronteira_frente and fronteira_tras:
+            # Expandir a fronteira com menos nós (heurística simples)
+            if len(fronteira_frente) <= len(fronteira_tras):
+                # expandir frente
+                nodo_atual, caminho = fronteira_frente.popitem()
+
+                for (vizinho, _) in grafo.getNeighbours(nodo_atual):
+                    if vizinho in visitados_frente:
+                        continue
+
+                    novo_caminho = caminho + [vizinho]
+                    visitados_frente[vizinho] = novo_caminho
+                    fronteira_frente[vizinho] = novo_caminho
+
+                    if vizinho in visitados_tras:
+                        # encontro — combinar caminhos
+                        caminho_destino = visitados_tras[vizinho]
+                        caminho_dest_rev = caminho_destino[::-1]
+                        return novo_caminho + caminho_dest_rev[1:]
+            else:
+                # expandir trás (usar predecessores para grafos dirigidos)
+                nodo_atual, caminho = fronteira_tras.popitem()
+
+                preds = self._predecessors(grafo, nodo_atual)
+                # se grafo não for dirigido, preds equivale a getNeighbours
+                if not preds:
+                    preds = [(n, a) for (n, a) in grafo.getNeighbours(nodo_atual)]
+
+                for (vizinho, _) in preds:
+                    if vizinho in visitados_tras:
+                        continue
+
+                    novo_caminho = caminho + [vizinho]
+                    visitados_tras[vizinho] = novo_caminho
+                    fronteira_tras[vizinho] = novo_caminho
+
+                    if vizinho in visitados_frente:
+                        caminho_frente = visitados_frente[vizinho]
+                        caminho_tras_rev = novo_caminho[::-1]
+                        return caminho_frente + caminho_tras_rev[1:]
+
+        return None
