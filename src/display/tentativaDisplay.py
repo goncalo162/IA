@@ -502,7 +502,13 @@ class DisplayGrafico(DisplayBase):
                         zorder=10
                     )[0]
 
-                    progresso = veiculo.progresso_percentual
+                    # Escolher viagem representativa para exibir progresso
+                    trip = self._get_trip_for_display(veiculo)
+                    if trip is not None:
+                        progresso = trip.progresso_percentual
+                    else:
+                        progresso = veiculo.progresso_percentual_medio
+
                     text_obj = self.ax.text(
                         x, y + 0.08,
                         f'V{veiculo.id_veiculo}\n{progresso:.0f}%',
@@ -551,16 +557,20 @@ class DisplayGrafico(DisplayBase):
 
     def _calcular_posicao_veiculo(self, veiculo) -> Optional[tuple]:
         """Calcula a posição interpolada de um veículo na sua rota."""
-        if not veiculo.viagem_ativa or not veiculo.viagem.rota or len(veiculo.viagem.rota) < 2:
-            if veiculo.viagem.rota and len(veiculo.viagem.rota) == 1:
-                node_nome = veiculo.viagem.rota[0]
+        if not veiculo.viagem_ativa:
+            return None
+
+        trip = self._get_trip_for_display(veiculo)
+        if trip is None or not getattr(trip, 'rota', None) or len(trip.rota) < 2:
+            if trip and getattr(trip, 'rota', None) and len(trip.rota) == 1:
+                node_nome = trip.rota[0]
                 node_id = self.ambiente.grafo.getNodeId(node_nome)
                 if node_id in self.pos:
                     return self.pos[node_id]
             return None
 
-        progresso_decimal = veiculo.progresso_percentual / 100.0
-        num_segmentos = len(veiculo.viagem.rota) - 1
+        progresso_decimal = trip.progresso_percentual / 100.0
+        num_segmentos = len(trip.rota) - 1
         posicao_segmento = progresso_decimal * num_segmentos
         indice_segmento = int(posicao_segmento)
 
@@ -570,8 +580,8 @@ class DisplayGrafico(DisplayBase):
         else:
             progresso_no_segmento = posicao_segmento - indice_segmento
 
-        origem_nome = veiculo.viagem.rota[indice_segmento]
-        destino_nome = veiculo.viagem.rota[indice_segmento + 1]
+        origem_nome = trip.rota[indice_segmento]
+        destino_nome = trip.rota[indice_segmento + 1]
         origem_id = self.ambiente.grafo.getNodeId(origem_nome)
         destino_id = self.ambiente.grafo.getNodeId(destino_nome)
 
@@ -585,6 +595,26 @@ class DisplayGrafico(DisplayBase):
         y = y_origem + (y_destino - y_origem) * progresso_no_segmento
 
         return (x, y)
+
+    def _get_trip_for_display(self, veiculo):
+        """Retorna a viagem a usar para exibir posição/progresso.
+
+        Prioridade: reposicionamento > recarga > primeiro pedido ativo
+        """
+        # Reposicionamento tem prioridade
+        if getattr(veiculo, 'viagem_reposicionamento', None) and veiculo.viagem_reposicionamento.viagem_ativa:
+            return veiculo.viagem_reposicionamento
+
+        # Recarga tem prioridade a seguir
+        if getattr(veiculo, 'viagem_recarga', None) and veiculo.viagem_recarga.viagem_ativa:
+            return veiculo.viagem_recarga
+
+        # Caso contrário, usar a primeira viagem de pedido ativa
+        for v in getattr(veiculo, 'viagens', []):
+            if v.viagem_ativa:
+                return v
+
+        return None
 
     def _desenhar_legenda(self):
         """Desenha a legenda do grafo."""
