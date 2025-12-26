@@ -42,6 +42,10 @@ class Metricas:
         self.autonomia_recarregada_total: float = 0.0  # Autonomia total recarregada (km)
         self.recargas_por_veiculo: Dict[int, int] = {}  # Contagem de recargas por veículo
         self.veiculos_sem_autonomia: int = 0  # Veículos que ficaram sem autonomia
+        
+        # Métricas de alocação com recarga
+        self.pedidos_rejeitados_sem_recarga: int = 0  # Pedidos rejeitados por falta de autonomia sem plano viável
+        self.veiculos_alocados_com_recarga_planejada: int = 0  # Veículos alocados que precisarão recarregar
 
         # Histórico detalhado
         self.historico_pedidos: List[Dict] = []
@@ -51,15 +55,29 @@ class Metricas:
 
     def registar_pedido_atendido(self, pedido_id: int, veiculo_id: int,
                                  tempo_resposta: float, distancia: float,
-                                 custo: float, emissoes: float):
-        """Regista um pedido que foi atendido com sucesso."""
+                                 custo: float, emissoes: float, plano_recarga=None):
+        """Regista um pedido que foi atendido com sucesso.
+        
+        Args:
+            pedido_id: ID do pedido
+            veiculo_id: ID do veículo alocado
+            tempo_resposta: Tempo de resposta em minutos
+            distancia: Distância percorrida em km
+            custo: Custo em euros
+            emissoes: Emissões em kg CO2
+            plano_recarga: PlanoRecarga se veículo necessitará recarga (opcional)
+        """
         self.pedidos_atendidos += 1
         self.tempo_resposta_total += tempo_resposta
         self.distancia_total += distancia
         self.custo_total += custo
         self.emissoes_totais += emissoes
+        
+        # Registar se foi alocado com plano de recarga
+        if plano_recarga and plano_recarga.viavel:
+            self.veiculos_alocados_com_recarga_planejada += 1
 
-        self.historico_pedidos.append({
+        historico_entry = {
             'pedido_id': pedido_id,
             'veiculo_id': veiculo_id,
             'tempo_resposta': tempo_resposta,
@@ -67,7 +85,19 @@ class Metricas:
             'custo': custo,
             'emissoes': emissoes,
             'timestamp': datetime.now()
-        })
+        }
+        
+        # Adicionar informação do plano de recarga se existir
+        if plano_recarga and plano_recarga.viavel:
+            historico_entry['plano_recarga'] = {
+                'posto': plano_recarga.posto,
+                'distancia_km': plano_recarga.distancia_km,
+                'tempo_recarga_min': plano_recarga.tempo_recarga_min,
+                'custo_extra': plano_recarga.custo_extra_estimado,
+                'desvio_km': plano_recarga.desvio_rota_km
+            }
+        
+        self.historico_pedidos.append(historico_entry)
 
     def registar_pedido_rejeitado(self, pedido_id: int, motivo: str):
         """Regista um pedido que não pôde ser atendido."""
@@ -379,6 +409,11 @@ class Metricas:
             'navegador': config.get('navegador', ''),
             'alocador': config.get('alocador', ''),
             'velocidade': config.get('velocidade', 1.0),
+            # Políticas
+            'recarga_policy': config.get('recarga_policy', ''),
+            'recarga_permitida': config.get('recarga_permitida', False),
+            'ridesharing_policy': config.get('ridesharing_policy', ''),
+            'ridesharing_permitida': config.get('ridesharing_permitida', False),
             'pedidos_atendidos': self.pedidos_atendidos,
             'pedidos_rejeitados': self.pedidos_rejeitados,
             'taxa_atendimento': round(self.taxa_atendimento(), 2),
@@ -404,7 +439,10 @@ class Metricas:
             'autonomia_recarregada_km': round(self.autonomia_recarregada_total, 2),
             'recargas_por_pedido': round(self.recargas_por_pedido(), 2),
             'percentual_tempo_recarga': round(self.percentual_tempo_em_recarga(), 2),
-            'veiculos_recarregados': len(self.recargas_por_veiculo)
+            'veiculos_recarregados': len(self.recargas_por_veiculo),
+            'pedidos_rejeitados_sem_recarga': self.pedidos_rejeitados_sem_recarga,
+            'veiculos_alocados_com_recarga_planejada': self.veiculos_alocados_com_recarga_planejada,
+            'veiculos_sem_autonomia': self.veiculos_sem_autonomia
         }
 
         # Escrever no CSV

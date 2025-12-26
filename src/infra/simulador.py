@@ -119,6 +119,9 @@ class Simulador:
         self.gestor_viagens.configurar_gestor_recargas(self.gestor_recargas)
         self.gestor_pedidos.configurar_display(self.display)
 
+        if self.alocador is not None:
+            self.alocador.configurar_gestor_recargas(self.gestor_recargas)
+
     ##### MÉTODO AUXILIAR DE CARREGAMENTO DE DADOS #####
 
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str,
@@ -271,7 +274,11 @@ class Simulador:
         config = {
             'navegador': self.navegador.nome_algoritmo(),
             'alocador': self.alocador.nome_algoritmo(),
-            'velocidade': self.velocidade_simulacao
+            'velocidade': self.velocidade_simulacao,
+            'recarga_policy': self.gestor_recargas.recarga_policy.nome_policy(),
+            'recarga_permitida': self.gestor_recargas.recarga_policy.permite_recarga(),
+            'ridesharing_policy': self.gestor_pedidos.ridesharing_policy.nome_policy(),
+            'ridesharing_permitida': self.gestor_pedidos.ridesharing_policy.permite_ridesharing()
         }
 
         csv_ficheiro = self.metricas.exportar_csv(None, config)

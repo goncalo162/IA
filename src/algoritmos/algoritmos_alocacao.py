@@ -137,8 +137,9 @@ class AlocadorHeuristico(AlocadorBase):
 
             distancia_total = distancia_ate_cliente + distancia_pedido
 
-            # 4 — verificar autonomia
-            if v.autonomia_atual < distancia_total:
+            # 4 — verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]  # Concatenar rotas
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # 5 — calcular score
@@ -157,6 +158,12 @@ class AlocadorHeuristico(AlocadorBase):
             if pedido.preferencia_ambiental == "eco":
                 if v.tipo == "combustao":
                     score += self.PENALIZACAO_COMBUSTAO
+            
+            # Adicionar penalização se há plano de recarga
+            if v.plano_recarga_pendente:
+                if self.gestor_recargas and self.gestor_recargas.recarga_policy:
+                    penalizacao_recarga = self.gestor_recargas.recarga_policy.calcular_penalizacao_recarga(v.plano_recarga_pendente)
+                    score += penalizacao_recarga
 
             candidatos.append((score, v, rota_ate_cliente, distancia_ate_cliente))
 
@@ -209,11 +216,18 @@ class AlocadorPorCusto(AlocadorBase):
                 continue
 
             distancia_total = distancia_ate_cliente + distancia_pedido
-            if not self._verificar_autonomia(v, distancia_total):
+            
+            # Verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # custo estimado = (distancia_total) * custo_operacional_km
             custo_estimado = distancia_total * v.custo_operacional_km
+            
+            # Adicionar custo da recarga se necessária
+            if v.plano_recarga_pendente:
+                custo_estimado += v.plano_recarga_pendente.custo_extra_estimado
 
             if custo_estimado < melhor_custo:
                 melhor_custo = custo_estimado
@@ -256,13 +270,23 @@ class AlocadorAEstrela(AlocadorBase):
             g = custo_ate_cliente + custo_pedido
 
             distancia_total = grafo.calcular_distancia_rota(rota_ate_cliente) + distancia_pedido
-            if not self._verificar_autonomia(v, distancia_total):
+            
+            # Verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # h: heurística entre veículo e origem do pedido
             h = self.heuristica.estimativa(grafo, origem_veiculo_nome, origem_pedido_nome)
 
             score = g + h
+            
+            # Adicionar penalização se há plano de recarga
+            if v.plano_recarga_pendente:
+                if self.gestor_recargas and self.gestor_recargas.recarga_policy:
+                    penalizacao_recarga = self.gestor_recargas.recarga_policy.calcular_penalizacao_recarga(v.plano_recarga_pendente)
+                    score += penalizacao_recarga
+            
             candidatos.append((score, v, rota_ate_cliente, grafo.calcular_distancia_rota(rota_ate_cliente)))
 
         if not candidatos:

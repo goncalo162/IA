@@ -82,10 +82,10 @@ class GestorViagens:
             if not veiculo.viagem_ativa:
                 self.remover_viagem(veiculo_id)
                 
-                # Verificar necessidade de recarga após conclusão
+                # Verificar necessidade de recarga após conclusão (sinalizar fim de viagem)
                 if self.gestor_recargas:
                     self.gestor_recargas.verificar_e_agendar_recarga(
-                        veiculo, tempo_simulacao
+                        veiculo, tempo_simulacao, fim_viagem=True
                     )
         
         # Retornar veículos que chegaram a postos (para o gestor de recargas processar)

@@ -10,6 +10,7 @@ from infra.entidades.pedidos import Pedido
 from infra.grafo.grafo import Grafo
 from algoritmos.criterios import FuncaoCusto, Heuristica, CustoDefault, ZeroHeuristica
 from infra.entidades.veiculos import EstadoVeiculo
+from infra.entidades.recarga import PlanoRecarga
 
 
 class AlocadorBase(ABC):
@@ -26,12 +27,23 @@ class AlocadorBase(ABC):
 
         O `navegador` é usado pelos algoritmos de alocação para calcular rotas
         entre veículo e cliente sem precisar ser passado a cada chamada.
+        
+        Args:
+            navegador: Navegador para cálculo de rotas
+            funcao_custo: Função de custo para avaliação de rotas
+            heuristica: Heurística para estimativas
+            gestor_recargas: Gestor de recargas (opcional, para planeamento de recarga)
         """
         self.navegador = navegador
         self.funcao_custo: FuncaoCusto = funcao_custo if funcao_custo is not None else CustoDefault()
         self.heuristica: Heuristica = heuristica if heuristica is not None else ZeroHeuristica()
+        self.gestor_recargas = None # a ser configurado externamente
 
         #adicionar estrutura auxiliar talvez dicionario de idveiulo para infos dos calculos do custo para escolher melhor os veiculos
+
+    def configurar_gestor_recargas(self, gestor_recargas):
+        """Configura o gestor de recargas para coordenação."""
+        self.gestor_recargas = gestor_recargas
 
     @abstractmethod
     def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
@@ -78,4 +90,43 @@ class AlocadorBase(ABC):
 
         origem_pedido_nome = grafo.getNodeName(pedido.origem)
         return veiculo.passa_por(origem_pedido_nome)
+    
+    def verificar_ou_planear_recarga(self, veiculo: Veiculo, distancia_total: float, 
+                                       rota_completa: Optional[List[str]] = None) -> bool:
+        """
+        Verifica autonomia e planeia recarga se necessário.
+        
+        Se veículo não tem autonomia suficiente, tenta planear recarga.
+        Armazena plano em veiculo.plano_recarga_pendente se viável.
+        
+        Args:
+            veiculo: Veículo a verificar
+            distancia_total: Distância total a percorrer
+            rota_completa: Rota completa planeada (util para políticas que considerem desvio)
+            
+        Returns:
+            True se veículo é elegível (tem autonomia ou plano de recarga viável),
+            False caso contrário
+        """
+        # Verificar autonomia direta
+        if veiculo.autonomia_suficiente_para(distancia_total):
+            veiculo.plano_recarga_pendente = None  # Limpar plano antigo se houver
+            return True
+        
+        # Sem autonomia e sem gestor de recargas, veículo inelegível
+        if not self.gestor_recargas:
+            veiculo.plano_recarga_pendente = None
+            return False
+        
+        # Planear recarga
+        plano = self.gestor_recargas.planear_recarga(veiculo, rota_completa)
+        
+        if plano and plano.viavel:
+            # Armazenar plano para scoring
+            veiculo.plano_recarga_pendente = plano
+            return True
+        else:
+            # Sem plano viável, veículo inelegível
+            veiculo.plano_recarga_pendente = None
+            return False
 

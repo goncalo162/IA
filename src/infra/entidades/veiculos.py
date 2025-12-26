@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from infra.entidades.viagem import Viagem, ViagemRecarga
+from infra.entidades.recarga import PlanoRecarga
 from infra.grafo.node import TipoNodo
-
 
 class EstadoVeiculo(Enum):
     DISPONIVEL = 1
@@ -34,6 +34,7 @@ class Veiculo(ABC):
         self._autonomia_critica_percentual = autonomia_critica_percentual  # % mínima de autonomia
         self._tempo_recarga_inicio = None  # Timestamp de quando iniciou a recarga
         self._localizacao_abastecimento = None  # Onde está a reabastecer, TODO: REVER, ACHO QUE NAO PRECISA DESTE PARAMETRO
+        self.plano_recarga_pendente: Optional[PlanoRecarga] = None  # Dados auxiliares de plano de recarga para scoring
 
         # Dados auxiliares da possível próxima viagem (rota veículo->cliente)
         #TODO: ver onde faz sentido voltar a meter isto a zeros para nao ficar com dados obsoletos (se estiver em andamento por exemplo, e mudar a localiação antes de começar a viagem)

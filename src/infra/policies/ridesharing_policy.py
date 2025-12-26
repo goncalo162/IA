@@ -7,6 +7,11 @@ from typing import Optional, Tuple, List
 
 class RideSharingPolicy(ABC):
     """Classe abstrata para políticas de ride-sharing."""
+
+    @abstractmethod
+    def nome_policy(self) -> str:
+        """Retorna o nome da política de ride-sharing."""
+        pass
     
     @abstractmethod
     def ajustar_rotas(self, veiculo, origem_nome: str, destino_nome: str, 
@@ -39,6 +44,8 @@ class SimplesRideSharingPolicy(RideSharingPolicy):
     Se o veículo já tem viagens ativas, a rota do pedido deve iniciar coincidente 
     com o plano atual do veículo e depois estender até ao destino do pedido.
     """
+    def nome_policy(self):
+        return "SimplesRideSharingPolicy"
     
     def permite_ridesharing(self) -> bool:
         return True
@@ -98,6 +105,8 @@ class SemRideSharingPolicy(RideSharingPolicy):
     
     Cada veículo só pode ter uma viagem ativa por vez.
     """
+    def nome_policy(self):
+        return "SemRideSharingPolicy"
     
     def permite_ridesharing(self) -> bool:
         return False
