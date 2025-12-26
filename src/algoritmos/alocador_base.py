@@ -49,6 +49,11 @@ class AlocadorBase(ABC):
         """
         pass
 
+    @abstractmethod
+    def nome_algoritmo(self) -> str:
+        """Retorna o nome do algoritmo para identificação."""
+        pass
+
     def _verificar_capacidade(self, veiculo: Veiculo, pedido: Pedido) -> bool:
         """Verifica se o veículo tem capacidade para o número de passageiros."""
         return veiculo.capacidade_passageiros >= veiculo.numero_passageiros + pedido.numero_passageiros
@@ -73,3 +78,4 @@ class AlocadorBase(ABC):
 
         origem_pedido_nome = grafo.getNodeName(pedido.origem)
         return veiculo.passa_por(origem_pedido_nome)
+

@@ -149,6 +149,7 @@ class GestorEventos:
         self.eventos = []
         self.eventos_ativos = []
         self.fila_temporal = FilaEventos()
+        self._tempo_atual = None
 
     def adicionar_evento(self, evento: Evento):
         """Adiciona um novo evento dinâmico ao sistema."""
@@ -180,6 +181,9 @@ class GestorEventos:
         Returns:
             Lista de eventos processados
         """
+        # Atualizar tempo atual para permitir callbacks acederem ao instante
+        self._tempo_atual = tempo_atual
+
         eventos_processados = []
 
         while self.fila_temporal.tem_eventos():
@@ -201,6 +205,9 @@ class GestorEventos:
         Atualiza o estado dos eventos dinâmicos baseado no tempo atual.
         Ativa eventos que devem começar e desativa eventos expirados.
         """
+        # Manter registro do tempo atual para uso por outros gestores
+        self._tempo_atual = tempo_atual
+
         for evento in self.eventos:
             # Verificar se evento deve ser ativado
             if not evento.ativo and tempo_atual >= evento.timestamp:

@@ -70,11 +70,15 @@ class AlocadorSimples(AlocadorBase):
 
         return None
 
+    def nome_algoritmo(self):
+        return "Simples"
+
 
 ####################
 #   *Heuristico*   #
 ####################
 
+#NOTA: NAO DEVERIA RECEBER A FUNÇÃO HEURISTICA OU CUSTO E USAR EM VEZ DE FAZER AS CONTAS TODAS AQUI?
 
 class AlocadorHeuristico(AlocadorBase):
     """
@@ -169,3 +173,106 @@ class AlocadorHeuristico(AlocadorBase):
         melhor_veiculo.distancia_ate_cliente = dist_cli
 
         return melhor_veiculo
+
+    def nome_algoritmo(self):
+        return "Heurístico"
+
+#TODO: REVER ESTES ALGORITMOS
+
+class AlocadorPorCusto(AlocadorBase):
+    """Alocador que escolhe veículo com menor custo operacional estimado.
+
+    Usa a `funcao_custo` para estimar custo/tempo das rotas e multiplica pelo
+    custo operacional do veículo para obter custo monetário aproximado.
+    """
+
+    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+        origem_pedido_nome = grafo.getNodeName(pedido.origem)
+        melhor = None
+        melhor_custo = float('inf')
+
+        for v in veiculos_disponiveis:
+            if not self._verificar_capacidade(v, pedido):
+                continue
+
+            if not self._veiculo_passa_pela_origem(v, pedido, grafo):
+                continue
+
+            origem_veiculo_nome = v.localizacao_atual if isinstance(v.localizacao_atual, str) else grafo.getNodeName(v.localizacao_atual)
+
+            rota_ate_cliente = self.navegador.calcular_rota(grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
+            if rota_ate_cliente is None:
+                continue
+
+            distancia_ate_cliente = grafo.calcular_distancia_rota(rota_ate_cliente)
+            if distancia_ate_cliente is None:
+                continue
+
+            distancia_total = distancia_ate_cliente + distancia_pedido
+            if not self._verificar_autonomia(v, distancia_total):
+                continue
+
+            # custo estimado = (distancia_total) * custo_operacional_km
+            custo_estimado = distancia_total * v.custo_operacional_km
+
+            if custo_estimado < melhor_custo:
+                melhor_custo = custo_estimado
+                melhor = v
+                melhor.rota_ate_cliente = rota_ate_cliente
+                melhor.distancia_ate_cliente = distancia_ate_cliente
+
+        return melhor
+
+    def nome_algoritmo(self):
+        return "PorCusto"
+
+class AlocadorAEstrela(AlocadorBase):
+    """Alocador que aplica uma heurística (A*-like) para escolher veículo.
+
+    Para cada veículo estima g = custo_real (pela `funcao_custo`) e h = heuristica
+    e escolhe o veículo com menor g + h.
+    """
+
+    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+        origem_pedido_nome = grafo.getNodeName(pedido.origem)
+        candidatos = []
+
+        for v in veiculos_disponiveis:
+            if not self._verificar_capacidade(v, pedido):
+                continue
+
+            if not self._veiculo_passa_pela_origem(v, pedido, grafo):
+                continue
+
+            origem_veiculo_nome = v.localizacao_atual if isinstance(v.localizacao_atual, str) else grafo.getNodeName(v.localizacao_atual)
+
+            rota_ate_cliente = self.navegador.calcular_rota(grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
+            if rota_ate_cliente is None:
+                continue
+
+            # g: custo real da rota (veiculo->cliente + pedido)
+            custo_ate_cliente = self.funcao_custo.custo_rota(grafo, rota_ate_cliente, v)
+            custo_pedido = self.funcao_custo.custo_rota(grafo, rota_pedido, v)
+            g = custo_ate_cliente + custo_pedido
+
+            distancia_total = grafo.calcular_distancia_rota(rota_ate_cliente) + distancia_pedido
+            if not self._verificar_autonomia(v, distancia_total):
+                continue
+
+            # h: heurística entre veículo e origem do pedido
+            h = self.heuristica.estimativa(grafo, origem_veiculo_nome, origem_pedido_nome)
+
+            score = g + h
+            candidatos.append((score, v, rota_ate_cliente, grafo.calcular_distancia_rota(rota_ate_cliente)))
+
+        if not candidatos:
+            return None
+
+        candidatos.sort(key=lambda x: x[0])
+        _, melhor_veiculo, rota, dist_cli = candidatos[0]
+        melhor_veiculo.rota_ate_cliente = rota
+        melhor_veiculo.distancia_ate_cliente = dist_cli
+        return melhor_veiculo
+
+    def nome_algoritmo(self):
+        return "A-Estrela"
