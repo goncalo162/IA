@@ -1,110 +1,57 @@
 from display.tentativaDisplay import DisplayGrafico
 from infra.simulador import Simulador
-from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
-from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples
-
+from config import Config
 from datetime import datetime
-from dotenv import load_dotenv
 import sys
 import os
 
-# Add project root to Python path (so grafos can be imported)
+# Add project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Carregar variáveis de ambiente do ficheiro .env
-load_dotenv()
-
-# Carregar configurações do .env com valores default
-DURACAO_HORAS_DEFAULT = float(os.getenv('DURACAO_HORAS', 8.0))
-FREQUENCIA_CALCULO_DEFAULT = float(os.getenv('FREQUENCIA_CALCULO', 1.0))
-FREQUENCIA_DISPLAY_DEFAULT = float(os.getenv('FREQUENCIA_DISPLAY', 10.0))
-VELOCIDADE_SIMULACAO_DEFAULT = float(os.getenv('VELOCIDADE_SIMULACAO', 1.0))
 
 
 def main():
-
-    #TODO: REVER porque se calhar nao vale a pena passar argumentos por linha de comando apenas no .env, fica mais limpo e parametrizado
-    # Verificar se foram passados argumentos via linha de comando ou usar .env
-    if len(sys.argv) >= 6:
-        caminho_grafo, caminho_veiculos, caminho_pedidos, algoritmo_navegacao, algoritmo_alocacao = sys.argv[1:6]
-        caminho_eventos_transito = os.getenv('CAMINHO_EVENTOS_TRANSITO', 'dataset/eventos_transito.json')
-    elif len(sys.argv) == 1:
-        # Usar valores do .env
-        caminho_grafo = os.getenv('CAMINHO_GRAFO', 'dataset/grafo.json')
-        caminho_veiculos = os.getenv('CAMINHO_VEICULOS', 'dataset/veiculos.json')
-        caminho_pedidos = os.getenv('CAMINHO_PEDIDOS', 'dataset/pedidos.json')
-        caminho_eventos_transito = os.getenv('CAMINHO_EVENTOS_TRANSITO', 'dataset/eventos_transito.json')
-        algoritmo_navegacao = os.getenv('ALGORITMO_NAVEGACAO', 'bfs')
-        algoritmo_alocacao = os.getenv('ALGORITMO_ALOCACAO', 'simples')
-    else:
-        print(
-            "Uso: python src/main.py <grafo.json> <veiculos.json> <pedidos.json> <algoritmo_nav> <algoritmo_aloc> [velocidade] [--no-display]")
-        print("Ou configure as variáveis no ficheiro .env e execute sem argumentos.")
-        sys.exit(1)
-
-    # Verificar primeiro o .env para display
-    display_env = os.getenv('MOSTRAR_DISPLAY', 'true').lower()
-    no_display = display_env in ('false', '0', 'no', 'off')
+    # Processar configurações
+    config = Config.parse_args()
     
-    # Linha de comando pode sobrepor (--no-display força sem display)
-    if '--no-display' in sys.argv:
-        no_display = True
-
-    # Velocidade de visualização (opcional - linha de comando ou .env)
-    velocidade_display = VELOCIDADE_SIMULACAO_DEFAULT
-    for arg in sys.argv[5:]:
-        if arg != '--no-display':
-            try:
-                velocidade_display = float(arg)
-            except ValueError:
-                pass
-
-    if not no_display:
-        display = DisplayGrafico(frequencia_display=FREQUENCIA_DISPLAY_DEFAULT)
-        display.set_velocidade_simulacao(velocidade_display)
+    # Configurar display
+    display = None
+    if not config['no_display']:
+        display = DisplayGrafico(frequencia_display=Config.FREQUENCIA_DISPLAY)
+        display.set_velocidade_simulacao(config['velocidade_display'])
     else:
-        display = None
         print("Modo sem display ativado (execução mais rápida)")
-
-    navegadores = {
-        "bfs": NavegadorBFS(),
-        "dfs": NavegadorDFS(),
-        "ucs": NavegadorCustoUniforme(),
-    }
-
-    if algoritmo_navegacao not in navegadores:
-        print("Algoritmo inválido. Use 'bfs', 'dfs' ou 'ucs'.")
-        sys.exit(1)
-
-    navegador = navegadores[algoritmo_navegacao]
     
-    alocadores = {
-        "Heuristico": AlocadorHeuristico(navegador),
-        "simples": AlocadorSimples(navegador),
-    }
-
-
-    if algoritmo_alocacao not in alocadores:
-        print("Algoritmo inválido. Use 'heuristico', 'simples'.")
-        sys.exit(1)
-
-    alocador = alocadores[algoritmo_alocacao]
-
+    # Obter navegador, alocador e políticas
+    navegador = Config.get_navegador(config['algoritmo_navegacao'])
+    alocador = Config.get_alocador(navegador, config['algoritmo_alocacao'])
+    ride_sharing_policy = Config.get_ride_sharing_policy()
+    recarga_policy = Config.get_recarga_policy()
+    
+    # Criar simulador
     tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
     simulador = Simulador(
-        alocador= alocador,
+        alocador=alocador,
         navegador=navegador,
         display=display,
         tempo_inicial=tempo_inicial,
-        frequencia_calculo=FREQUENCIA_CALCULO_DEFAULT,
-        velocidade_simulacao=velocidade_display
+        frequencia_calculo=Config.FREQUENCIA_CALCULO,
+        velocidade_simulacao=config['velocidade_display'],
+        ride_sharing_policy=ride_sharing_policy,
+        recarga_policy=recarga_policy
     )
-
+    
     if display is not None:
         display.set_metricas(simulador.metricas)
-
-    simulador.carregar_dados(caminho_grafo, caminho_veiculos, caminho_pedidos, caminho_eventos_transito)
-    simulador.executar(duracao_horas=DURACAO_HORAS_DEFAULT)
+    
+    # Carregar dados e executar
+    simulador.carregar_dados(
+        config['caminho_grafo'],
+        config['caminho_veiculos'],
+        config['caminho_pedidos'],
+        config['caminho_eventos_transito']
+    )
+    
+    simulador.executar(duracao_horas=Config.DURACAO_HORAS)
 
 
 if __name__ == '__main__':
