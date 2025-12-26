@@ -5,7 +5,7 @@ from typing import Optional
 
 from infra.policies.recarga_policy import RecargaAutomaticaPolicy, SemRecargaPolicy       
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
-from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples
+from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples, AlocadorPorCusto, AlocadorAEstrela
 from infra.policies.ridesharing_policy import SimplesRideSharingPolicy, SemRideSharingPolicy
 from algoritmos.criterios import CustoDefault, CustoTempoPercurso
 from algoritmos.criterios import ZeroHeuristica, HeuristicaEuclidiana
@@ -110,6 +110,8 @@ class Config:
         alocadores = {
             "heuristico": AlocadorHeuristico,
             "simples": AlocadorSimples,
+            "custo": AlocadorPorCusto,
+            "aestrela": AlocadorAEstrela,
         }
         
         alocador_class = alocadores.get(nome.lower())

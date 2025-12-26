@@ -62,3 +62,16 @@ def test_get_alocador_receives_funcao_e_heuristica():
     assert isinstance(al, AlocadorBase)
     assert al.funcao_custo is func
     assert al.heuristica is heur
+
+def test_get_new_alocadores_available_and_receive_params():
+    func = Config.get_funcao_custo('default')
+    heur = Config.get_heuristica('zero')
+    nav = Config.get_navegador('bfs', func, heur)
+
+    al_custo = Config.get_alocador(nav, 'custo', func, heur)
+    assert al_custo.funcao_custo is func
+    assert al_custo.heuristica is heur
+
+    al_a = Config.get_alocador(nav, 'aestrela', func, heur)
+    assert al_a.funcao_custo is func
+    assert al_a.heuristica is heur
