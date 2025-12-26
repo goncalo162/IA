@@ -3,7 +3,7 @@ import sys
 from dotenv import load_dotenv
 from typing import Optional
 
-from infra.policies.recarga_policy import RecargaAutomaticaPolicy, SemRecargaPolicy       
+from infra.policies.recarga_policy import RecargaAutomaticaPolicy, SemRecargaPolicy, RecargaDuranteViagemPolicy      
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
 from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples, AlocadorPorCusto, AlocadorAEstrela
 from infra.policies.ridesharing_policy import SimplesRideSharingPolicy, SemRideSharingPolicy
@@ -204,6 +204,7 @@ class Config:
 
         policies = {
             'automatica': RecargaAutomaticaPolicy,
+            'durante_viagem': RecargaDuranteViagemPolicy,
             'sem': SemRecargaPolicy,
         }
 

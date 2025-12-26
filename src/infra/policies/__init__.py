@@ -9,7 +9,8 @@ from .ridesharing_policy import (
 from .recarga_policy import (
     RecargaPolicy,
     RecargaAutomaticaPolicy,
-    SemRecargaPolicy
+    SemRecargaPolicy,
+    RecargaDuranteViagemPolicy,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     'RecargaPolicy',
     'RecargaAutomaticaPolicy',
     'SemRecargaPolicy',
+    'RecargaDuranteViagemPolicy',
 ]

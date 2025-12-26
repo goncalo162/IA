@@ -254,3 +254,7 @@ class Viagem(ViagemBase):
     def tempo_restante_horas(self) -> float:
         """Retorna o tempo estimado restante em horas."""
         return sum(seg['tempo_horas'] for seg in self.segmentos[self.indice_segmento_atual:])
+
+    def distancia_restante_km(self) -> float:
+        """Retorna a distância estimada restante em km."""
+        return self.distancia_total - self.distancia_percorrida

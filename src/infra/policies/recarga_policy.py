@@ -30,7 +30,7 @@ class RecargaPolicy(ABC):
 
 class RecargaAutomaticaPolicy(RecargaPolicy):
     """
-    Política que agenda recargas automaticamente quando necessário.
+    Política que agenda recargas automaticamente quando veiculo não tem viagens ativas.
     
     Veículos que ficam abaixo do limiar de autonomia são automaticamente
     direcionados para postos de abastecimento.
@@ -65,3 +65,32 @@ class SemRecargaPolicy(RecargaPolicy):
     def deve_agendar_recarga(self, veiculo) -> bool:
         """Nunca agenda recarga."""
         return False
+
+
+class RecargaDuranteViagemPolicy(RecargaPolicy):
+    """
+    Política que permite agendar recargas durante a viagem.
+    """
+
+    def permite_recarga(self) -> bool:
+        return True
+
+    def deve_agendar_recarga(self, veiculo) -> bool:
+        """
+        Agenda recarga se o veículo precisar reabastecer.
+        """
+
+        # Se tem viagens ativas, verificar se a autonomia é suficiente
+        # para completar as viagens remanescentes (soma das distâncias).
+        distancia_remanescente = 0.0
+
+        if len(veiculo.viagens) > 0:
+            viagem_total = veiculo.viagens[-1]
+            distancia_remanescente = viagem_total.distancia_restante_km()
+
+        # Se não há informação de distância remanescente (== 0) mantém comportamento clássico
+        if distancia_remanescente <= 0.0 or not veiculo.viagem_ativa:
+            return veiculo.precisa_reabastecer()
+
+        # Se a autonomia atual não for suficiente para a distância remanescente, então deve agendar a recarga.
+        return not veiculo.autonomia_suficiente_para(distancia_remanescente)

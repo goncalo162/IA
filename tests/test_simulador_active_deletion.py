@@ -25,6 +25,10 @@ class FakeVeiculo:
     @property
     def viagem_ativa(self):
         return self._active
+    
+    def precisa_reabastecer(self):
+        """Mock method - return False to avoid triggering recharge logic."""
+        return False
 
     def atualizar_progresso_viagem(self, tempo_decorrido_horas):
         # Return a tuple (list of fake concluded trips, chegou_posto) based on the next count
