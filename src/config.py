@@ -46,6 +46,9 @@ class Config:
     # Políticas de Recarga
     POLITICA_RECARGA = os.getenv('POLITICA_RECARGA', 'automatica')
 
+    # Penalização aplicada ao custo total por cada pedido rejeitado 
+    PENALIDADE_PEDIDO_REJEITADO = float(os.getenv('PENALIDADE_PEDIDO_REJEITADO', '100.0'))
+
     @classmethod
     def get_funcao_custo(self, nome: str = None):
         """Retorna a função de custo especificada (instância)."""

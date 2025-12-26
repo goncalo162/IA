@@ -196,7 +196,7 @@ class SemRecargaPolicy(RecargaPolicy):
     def permite_recarga(self) -> bool:
         return False
     
-    def deve_agendar_recarga(self, veiculo) -> bool:
+    def deve_agendar_recarga(self, veiculo, fim_viagem: bool = False) -> bool:
         """Nunca agenda recarga."""
         return False
     

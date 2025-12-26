@@ -3,6 +3,7 @@ Gestor de pedidos: processa chegada de pedidos, validação e alocação de veí
 """
 from typing import Optional, Tuple, List, Dict
 from infra.policies.ridesharing_policy import RideSharingPolicy, SimplesRideSharingPolicy
+from config import Config
 
 
 class GestorPedidos:
@@ -155,7 +156,11 @@ class GestorPedidos:
             self.logger.log(
                 f"  [X][/] Rota pedido não encontrada ({origem_nome} -> {destino_nome})"
             )
-            self.metricas.registar_pedido_rejeitado(pedido.id, "Rota pedido não encontrada")
+            self.metricas.registar_pedido_rejeitado(
+                pedido.id,
+                "Rota pedido não encontrada",
+                penalidade=Config.PENALIDADE_PEDIDO_REJEITADO
+            )
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
             return (None, 0, origem_nome, destino_nome)
@@ -190,7 +195,9 @@ class GestorPedidos:
                 f"  [!][/] Nenhum veículo disponível/autónomo para o pedido #{pedido.id}"
             )
             self.metricas.registar_pedido_rejeitado(
-                pedido.id, "Sem veículos com autonomia suficiente"
+                pedido.id,
+                "Sem veículos com autonomia suficiente",
+                penalidade=Config.PENALIDADE_PEDIDO_REJEITADO
             )
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
@@ -254,7 +261,9 @@ class GestorPedidos:
                 f"  [yellow]![/] Capacidade excedida para ride-sharing no veículo {veiculo.id_veiculo}"
             )
             self.metricas.registar_pedido_rejeitado(
-                pedido.id, "Capacidade ride-sharing excedida"
+                pedido.id,
+                "Capacidade ride-sharing excedida",
+                penalidade=Config.PENALIDADE_PEDIDO_REJEITADO
             )
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()

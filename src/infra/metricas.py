@@ -23,6 +23,7 @@ class Metricas:
         self.tempo_resposta_total: float = 0.0  # em minutos
         self.distancia_total: float = 0.0  # em km
         self.custo_total: float = 0.0  # em euros
+        self.custo_penalizacoes: float = 0.0  # em euros
         self.emissoes_totais: float = 0.0  # em kg CO2
         self.tempo_ocupacao_total: float = 0.0  # em minutos
         self.tempo_disponivel_total: float = 0.0  # em minutos
@@ -99,13 +100,25 @@ class Metricas:
         
         self.historico_pedidos.append(historico_entry)
 
-    def registar_pedido_rejeitado(self, pedido_id: int, motivo: str):
-        """Regista um pedido que não pôde ser atendido."""
+    def registar_pedido_rejeitado(self, pedido_id: int, motivo: str, penalidade: float = 0.0):
+        """Regista um pedido que não pôde ser atendido e aplica penalidade opcional.
+
+        Args:
+            pedido_id: ID do pedido
+            motivo: Motivo da rejeição
+            penalidade: Valor a acrescentar ao custo total como penalização
+        """
         self.pedidos_rejeitados += 1
+        # Aplicar penalidade ao custo total e ao contador de penalizações
+        if penalidade and penalidade > 0.0:
+            self.custo_total += penalidade
+            self.custo_penalizacoes += penalidade
+
         self.historico_pedidos.append({
             'pedido_id': pedido_id,
             'rejeitado': True,
             'motivo': motivo,
+            'penalidade': penalidade,
             'timestamp': datetime.now()
         })
 
@@ -288,6 +301,7 @@ class Metricas:
         relatorio.append("")
         relatorio.append(f"Pedidos atendidos: {self.pedidos_atendidos}")
         relatorio.append(f"Pedidos rejeitados: {self.pedidos_rejeitados}")
+        relatorio.append(f"Penalizações por rejeição: €{self.custo_penalizacoes:.2f}")
         relatorio.append(
             f"Taxa de atendimento: {self.taxa_atendimento():.2f}%")
         relatorio.append("")
@@ -345,6 +359,7 @@ class Metricas:
                 'tempo_resposta_medio': self.tempo_resposta_medio(),
                 'distancia_total': self.distancia_total,
                 'custo_total': self.custo_total,
+                'penalizacoes_total': self.custo_penalizacoes,
                 'custo_medio_por_km': self.custo_medio_por_km(),
                 'emissoes_totais': self.emissoes_totais,
                 'emissoes_medias_por_km': self.emissoes_medias_por_km(),
@@ -420,6 +435,7 @@ class Metricas:
             'tempo_resposta_medio': round(self.tempo_resposta_medio(), 2),
             'distancia_total': round(self.distancia_total, 2),
             'custo_total': round(self.custo_total, 2),
+            'penalizacoes_total': round(self.custo_penalizacoes, 2),
             'custo_medio_por_km': round(self.custo_medio_por_km(), 3),
             'emissoes_totais': round(self.emissoes_totais, 2),
             'emissoes_medias_por_km': round(self.emissoes_medias_por_km(), 3),
