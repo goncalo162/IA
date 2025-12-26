@@ -14,7 +14,8 @@ class GestorPedidos:
     """
     
     def __init__(self, ambiente, alocador, navegador, metricas, logger,
-                 ridesharing_policy: Optional[RideSharingPolicy] = None):
+                 ridesharing_policy: Optional[RideSharingPolicy] = None,
+                 gestor_recargas=None):
         """
         Inicializa o gestor de pedidos.
         
@@ -25,6 +26,7 @@ class GestorPedidos:
             metricas: Sistema de métricas
             logger: Sistema de logging
             ridesharing_policy: Política de ride-sharing (padrão: SimplesRideSharingPolicy)
+            gestor_recargas: Gestor de recargas para agendamento de planos (opcional)
         """
         self.ambiente = ambiente
         self.alocador = alocador
@@ -32,6 +34,7 @@ class GestorPedidos:
         self.metricas = metricas
         self.logger = logger
         self.ridesharing_policy = ridesharing_policy or SimplesRideSharingPolicy()
+        self.gestor_recargas = gestor_recargas
         self.display = None  # Será configurado externamente se necessário
     
     def configurar_display(self, display):
@@ -63,6 +66,24 @@ class GestorPedidos:
             return False
         
         self.logger.log(f"  [✓][/] Veículo alocado: {veiculo.id_veiculo}")
+        
+        # 2.1. Agendar plano de recarga se existir
+        if veiculo.plano_recarga_pendente and self.gestor_recargas:
+            plano = veiculo.plano_recarga_pendente
+            self.logger.log(
+                f"  [INFO] Veículo {veiculo.id_veiculo} necessitará recarga durante viagem: {plano.posto}"
+            )
+            
+            # Validar e agendar plano
+            if self.gestor_recargas.validar_plano(plano, veiculo, tempo_simulacao):
+                self.gestor_recargas.agendar_recarga(veiculo, plano, tempo_simulacao)
+                self.logger.log(f"  [✓] Recarga agendada: {plano.posto} ({plano.distancia_km:.1f} km)")
+            else:
+                self.logger.log(f"  [!] Plano de recarga inválido, será ignorado")
+            
+            # Limpar plano após processamento (agendado ou inválido)
+            veiculo.plano_recarga_pendente = None
+        
         self.ambiente.atribuir_pedido_a_veiculo(pedido, veiculo)
         
         # 3. Ajustar rotas para ride-sharing se aplicável
@@ -173,8 +194,23 @@ class GestorPedidos:
             )
             if self.display and hasattr(self.display, 'registrar_rejeicao'):
                 self.display.registrar_rejeicao()
+        else:
+            # Limpar planos de recarga de veículos não selecionados
+            self._limpar_planos_recarga_candidatos(lista_veiculos, veiculo)
         
         return veiculo
+    
+    def _limpar_planos_recarga_candidatos(self, veiculos_candidatos, veiculo_selecionado):
+        """
+        Limpa planos de recarga pendentes de veículos não selecionados.
+        
+        Args:
+            veiculos_candidatos: Lista de veículos candidatos
+            veiculo_selecionado: Veículo que foi escolhido
+        """
+        for v in veiculos_candidatos:
+            if v != veiculo_selecionado and v.plano_recarga_pendente:
+                v.plano_recarga_pendente = None
     
     def _calcular_metricas_viagem(self, rota_ate_cliente, rota_viagem, veiculo, distancia_viagem) -> Dict:
         """

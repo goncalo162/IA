@@ -80,15 +80,6 @@ class Simulador:
         self.pedidos_agendados = []
         
         # Inicializar gestores modulares com políticas configuráveis
-        self.gestor_pedidos = GestorPedidos(
-            ambiente=self.ambiente,
-            alocador=self.alocador,
-            navegador=self.navegador,
-            metricas=self.metricas,
-            logger=self.logger,
-            ridesharing_policy=ridesharing_policy or SimplesRideSharingPolicy()
-        )
-        
         self.gestor_viagens = GestorViagens(
             ambiente=self.ambiente,
             metricas=self.metricas,
@@ -102,6 +93,16 @@ class Simulador:
             metricas=self.metricas,
             logger=self.logger,
             recarga_policy=recarga_policy or RecargaAutomaticaPolicy()
+        )
+        
+        self.gestor_pedidos = GestorPedidos(
+            ambiente=self.ambiente,
+            alocador=self.alocador,
+            navegador=self.navegador,
+            metricas=self.metricas,
+            logger=self.logger,
+            ridesharing_policy=ridesharing_policy or SimplesRideSharingPolicy(),
+            gestor_recargas=self.gestor_recargas  # Injetar gestor_recargas
         )
         
         self.gestor_rotas = GestorRotas(
