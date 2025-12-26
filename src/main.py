@@ -36,7 +36,7 @@ def main():
         tempo_inicial=tempo_inicial,
         frequencia_calculo=Config.FREQUENCIA_CALCULO,
         velocidade_simulacao=config['velocidade_display'],
-        ride_sharing_policy=ride_sharing_policy,
+        ridesharing_policy=ride_sharing_policy,
         recarga_policy=recarga_policy
     )
     

@@ -10,7 +10,7 @@ class GestorPedidos:
     Responsável por processar pedidos de transporte.
     
     Coordena validação de rotas, escolha de veículos e início de viagens.
-    NÃO modifica viagens_ativas - apenas retorna veículos com viagens iniciadas.
+    Retorna veículos com viagens iniciadas.
     """
     
     def __init__(self, ambiente, alocador, navegador, metricas, logger,

@@ -179,7 +179,7 @@ class Config:
         return config
     
     @classmethod
-    def get_ride_sharing_policy() -> Optional[object]:
+    def get_ride_sharing_policy(self) -> Optional[object]:
         """Retorna a política de ride-sharing configurada ou None."""
 
         # Dicionário com as políticas disponíveis
@@ -199,7 +199,7 @@ class Config:
         return policy_class()
     
     @classmethod
-    def get_recarga_policy():
+    def get_recarga_policy(self):
         """Retorna a política de recarga configurada."""
 
         policies = {
