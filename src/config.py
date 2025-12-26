@@ -189,7 +189,7 @@ class Config:
         }
 
 
-        nome_policy = os.getenv('RIDE_SHARING_POLICY', 'simples')
+        nome_policy = os.getenv('POLITICA_RIDE_SHARING', 'simples')
         policy_class = policies.get(nome_policy.lower())
         if policy_class is None:
             print(f"Política de ride-sharing inválida: '{nome_policy}'")
@@ -208,7 +208,7 @@ class Config:
             'sem': SemRecargaPolicy,
         }
 
-        nome_policy = os.getenv('RECARGA_POLICY', 'automatica')
+        nome_policy = os.getenv('POLITICA_RECARGA', 'automatica')
         policy_class = policies.get(nome_policy.lower())
         if policy_class is None:
             print(f"Política de recarga inválida: '{nome_policy}'")
