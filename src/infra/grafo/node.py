@@ -8,7 +8,14 @@ class TipoNodo(Enum):
 
 
 class Node:
-    def __init__(self, name, id=-1, tipo: TipoNodo = TipoNodo.LOCAL, x: float = None, y: float = None, atratividade=0):
+    def __init__(
+            self,
+            name,
+            id=-1,
+            tipo: TipoNodo = TipoNodo.LOCAL,
+            x: float = None,
+            y: float = None,
+            atratividade=0):
         self.m_id = id
         self.m_name = str(name)
         self.m_tipo = tipo

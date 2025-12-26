@@ -18,7 +18,13 @@ class AlocadorSimples(AlocadorBase):
     a capacidade de passageiros do veículo é suficiente.
     """
 
-    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+    def escolher_veiculo(
+            self,
+            pedido: Pedido,
+            veiculos_disponiveis: List[Veiculo],
+            grafo: Grafo,
+            rota_pedido: List[str],
+            distancia_pedido: float) -> Optional[Veiculo]:
         """Escolhe o *primeiro* veículo com capacidade e autonomia suficientes.
 
         Usa o `navegador` e o `grafo` para calcular a rota veículo->cliente,
@@ -78,7 +84,8 @@ class AlocadorSimples(AlocadorBase):
 #   *Heuristico*   #
 ####################
 
-#NOTA: NAO DEVERIA RECEBER A FUNÇÃO HEURISTICA OU CUSTO E USAR EM VEZ DE FAZER AS CONTAS TODAS AQUI?
+# NOTA: NAO DEVERIA RECEBER A FUNÇÃO HEURISTICA OU CUSTO E USAR EM VEZ DE
+# FAZER AS CONTAS TODAS AQUI?
 
 class AlocadorHeuristico(AlocadorBase):
     """
@@ -119,7 +126,9 @@ class AlocadorHeuristico(AlocadorBase):
                 continue
 
             # 2 — converter nome/localização
-            origem_v = v.localizacao_atual if isinstance(v.localizacao_atual, str) else grafo.getNodeName(v.localizacao_atual)
+            origem_v = v.localizacao_atual if isinstance(
+                v.localizacao_atual, str) else grafo.getNodeName(
+                v.localizacao_atual)
 
             # 3 — rota veículo -> cliente
             rota_ate_cliente = self.navegador.calcular_rota(
@@ -137,8 +146,9 @@ class AlocadorHeuristico(AlocadorBase):
 
             distancia_total = distancia_ate_cliente + distancia_pedido
 
-            # 4 — verificar autonomia
-            if v.autonomia_atual < distancia_total:
+            # 4 — verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]  # Concatenar rotas
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # 5 — calcular score
@@ -157,6 +167,13 @@ class AlocadorHeuristico(AlocadorBase):
             if pedido.preferencia_ambiental == "eco":
                 if v.tipo == "combustao":
                     score += self.PENALIZACAO_COMBUSTAO
+
+            # Adicionar penalização se há plano de recarga
+            if v.plano_recarga_pendente:
+                if self.gestor_recargas and self.gestor_recargas.recarga_policy:
+                    penalizacao_recarga = self.gestor_recargas.recarga_policy.calcular_penalizacao_recarga(
+                        v.plano_recarga_pendente)
+                    score += penalizacao_recarga
 
             candidatos.append((score, v, rota_ate_cliente, distancia_ate_cliente))
 
@@ -177,7 +194,8 @@ class AlocadorHeuristico(AlocadorBase):
     def nome_algoritmo(self):
         return "Heurístico"
 
-#TODO: REVER ESTES ALGORITMOS
+# TODO: REVER ESTES ALGORITMOS
+
 
 class AlocadorPorCusto(AlocadorBase):
     """Alocador que escolhe veículo com menor custo operacional estimado.
@@ -186,7 +204,13 @@ class AlocadorPorCusto(AlocadorBase):
     custo operacional do veículo para obter custo monetário aproximado.
     """
 
-    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+    def escolher_veiculo(
+            self,
+            pedido: Pedido,
+            veiculos_disponiveis: List[Veiculo],
+            grafo: Grafo,
+            rota_pedido: List[str],
+            distancia_pedido: float) -> Optional[Veiculo]:
         origem_pedido_nome = grafo.getNodeName(pedido.origem)
         melhor = None
         melhor_custo = float('inf')
@@ -198,9 +222,12 @@ class AlocadorPorCusto(AlocadorBase):
             if not self._veiculo_passa_pela_origem(v, pedido, grafo):
                 continue
 
-            origem_veiculo_nome = v.localizacao_atual if isinstance(v.localizacao_atual, str) else grafo.getNodeName(v.localizacao_atual)
+            origem_veiculo_nome = v.localizacao_atual if isinstance(
+                v.localizacao_atual, str) else grafo.getNodeName(
+                v.localizacao_atual)
 
-            rota_ate_cliente = self.navegador.calcular_rota(grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
+            rota_ate_cliente = self.navegador.calcular_rota(
+                grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
             if rota_ate_cliente is None:
                 continue
 
@@ -209,11 +236,18 @@ class AlocadorPorCusto(AlocadorBase):
                 continue
 
             distancia_total = distancia_ate_cliente + distancia_pedido
-            if not self._verificar_autonomia(v, distancia_total):
+
+            # Verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # custo estimado = (distancia_total) * custo_operacional_km
             custo_estimado = distancia_total * v.custo_operacional_km
+
+            # Adicionar custo da recarga se necessária
+            if v.plano_recarga_pendente:
+                custo_estimado += v.plano_recarga_pendente.custo_extra_estimado
 
             if custo_estimado < melhor_custo:
                 melhor_custo = custo_estimado
@@ -226,6 +260,7 @@ class AlocadorPorCusto(AlocadorBase):
     def nome_algoritmo(self):
         return "PorCusto"
 
+
 class AlocadorAEstrela(AlocadorBase):
     """Alocador que aplica uma heurística (A*-like) para escolher veículo.
 
@@ -233,7 +268,13 @@ class AlocadorAEstrela(AlocadorBase):
     e escolhe o veículo com menor g + h.
     """
 
-    def escolher_veiculo(self, pedido: Pedido, veiculos_disponiveis: List[Veiculo], grafo: Grafo, rota_pedido: List[str], distancia_pedido: float) -> Optional[Veiculo]:
+    def escolher_veiculo(
+            self,
+            pedido: Pedido,
+            veiculos_disponiveis: List[Veiculo],
+            grafo: Grafo,
+            rota_pedido: List[str],
+            distancia_pedido: float) -> Optional[Veiculo]:
         origem_pedido_nome = grafo.getNodeName(pedido.origem)
         candidatos = []
 
@@ -244,9 +285,12 @@ class AlocadorAEstrela(AlocadorBase):
             if not self._veiculo_passa_pela_origem(v, pedido, grafo):
                 continue
 
-            origem_veiculo_nome = v.localizacao_atual if isinstance(v.localizacao_atual, str) else grafo.getNodeName(v.localizacao_atual)
+            origem_veiculo_nome = v.localizacao_atual if isinstance(
+                v.localizacao_atual, str) else grafo.getNodeName(
+                v.localizacao_atual)
 
-            rota_ate_cliente = self.navegador.calcular_rota(grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
+            rota_ate_cliente = self.navegador.calcular_rota(
+                grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
             if rota_ate_cliente is None:
                 continue
 
@@ -256,14 +300,26 @@ class AlocadorAEstrela(AlocadorBase):
             g = custo_ate_cliente + custo_pedido
 
             distancia_total = grafo.calcular_distancia_rota(rota_ate_cliente) + distancia_pedido
-            if not self._verificar_autonomia(v, distancia_total):
+
+            # Verificar autonomia ou planear recarga se necessário
+            rota_completa = rota_ate_cliente + rota_pedido[1:]
+            if not self.verificar_ou_planear_recarga(v, distancia_total, rota_completa):
                 continue
 
             # h: heurística entre veículo e origem do pedido
             h = self.heuristica.estimativa(grafo, origem_veiculo_nome, origem_pedido_nome)
 
             score = g + h
-            candidatos.append((score, v, rota_ate_cliente, grafo.calcular_distancia_rota(rota_ate_cliente)))
+
+            # Adicionar penalização se há plano de recarga
+            if v.plano_recarga_pendente:
+                if self.gestor_recargas and self.gestor_recargas.recarga_policy:
+                    penalizacao_recarga = self.gestor_recargas.recarga_policy.calcular_penalizacao_recarga(
+                        v.plano_recarga_pendente)
+                    score += penalizacao_recarga
+
+            candidatos.append(
+                (score, v, rota_ate_cliente, grafo.calcular_distancia_rota(rota_ate_cliente)))
 
         if not candidatos:
             return None

@@ -1,20 +1,19 @@
 """Viewer principal - integra os módulos."""
 
+from display.aplicacao.queue_handler import process_queue
+from display.aplicacao.layout_utils import compute_layout_best
+from display.aplicacao.interacoes import register_interactions
+from display.aplicacao.desenhar import GraphDrawer
+from display.aplicacao.viewport import Viewport
+import traceback
+from datetime import datetime
+from matplotlib.animation import FuncAnimation
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
 import tkinter as tk
 import networkx as nx
 import matplotlib
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.animation import FuncAnimation
-from datetime import datetime
-import traceback
-
-from display.aplicacao.viewport import Viewport
-from display.aplicacao.desenhar import GraphDrawer
-from display.aplicacao.interacoes import register_interactions
-from display.aplicacao.layout_utils import compute_layout_best
-from display.aplicacao.queue_handler import process_queue
 
 
 class AnimatedGraphApp:
@@ -22,7 +21,7 @@ class AnimatedGraphApp:
 
     def __init__(self, grafo, ambiente, command_queue):
         print("[GraphViewer] Inicializando...")
-        
+
         self.root = tk.Tk()
         self.root.title("Simulação - Visualizador de Grafo")
 
@@ -53,7 +52,7 @@ class AnimatedGraphApp:
         # ========== LAYOUT ==========
         # Aumentar espaçamento: aumenta k_factor de 6 para 12, e scale de 10 para 20
         self.pos = compute_layout_best(self.G, scale=2.0)
-        
+
         # ========== INFORMAÇÕES DO CARRO ==========
         start_node = list(self.G.nodes())[0]
         sx, sy = self.pos[start_node]
@@ -78,7 +77,7 @@ class AnimatedGraphApp:
         # ========== DESENHAR E CONFIGURAR ==========
         print("[GraphViewer] Desenhando grafo inicial...")
         self._draw_complete_graph()
-        
+
         # Registar interações (ANTES de aplicar auto-scale)
         self.interaction_handler = InteractionHandler(self)
         self.interaction_handler.register(self.canvas, self.ax)
@@ -89,7 +88,7 @@ class AnimatedGraphApp:
         # ========== LOOPS ==========
         self.root.after(100, lambda: process_queue(self))
         self.animation = FuncAnimation(self.fig, self._animation_step, interval=50, blit=False)
-        
+
         print("[GraphViewer] Inicialização completa")
 
     def _draw_complete_graph(self):
@@ -156,7 +155,7 @@ class AnimatedGraphApp:
             tstr = tempo_simulacao.strftime("%H:%M:%S")
         else:
             tstr = str(tempo_simulacao)
-        
+
         self.ax.set_title(f"Simulação — Tempo {tstr} | Viagens ativas: {len(viagens_ativas)}")
         self._update_drawing()
 
@@ -164,14 +163,14 @@ class AnimatedGraphApp:
         """Destaca uma rota."""
         if not rota or len(rota) < 2:
             return
-        
+
         for i in range(len(rota) - 1):
             u, v = rota[i], rota[i + 1]
             if u in self.pos and v in self.pos:
                 x1, y1 = self.pos[u]
                 x2, y2 = self.pos[v]
                 self.ax.plot([x1, x2], [y1, y2], color="green", linewidth=3, alpha=0.6, zorder=1.5)
-        
+
         self.canvas.draw_idle()
 
     def run(self):

@@ -66,7 +66,15 @@ class DashboardWindow:
         # Tabela de viagens ativas
         frame_tabela = ttk.LabelFrame(self.root, text="🚗 Viagens ativas")
         frame_tabela.pack(fill="both", expand=True, padx=10, pady=5)
-        self.tree = ttk.Treeview(frame_tabela, columns=("veiculo", "pedido", "origem", "destino", "progresso"), show="headings")
+        self.tree = ttk.Treeview(
+            frame_tabela,
+            columns=(
+                "veiculo",
+                "pedido",
+                "origem",
+                "destino",
+                "progresso"),
+            show="headings")
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col.capitalize())
             self.tree.column(col, width=100, anchor="center")
@@ -111,7 +119,10 @@ class DashboardWindow:
             if pedido and veiculo:
                 origem = rota[0] if len(rota) > 0 else "?"
                 destino = rota[-1] if len(rota) > 0 else "?"
-                self._adicionar_log(f"✓ Viagem iniciada: Veículo {veiculo.id_veiculo} → Pedido #{pedido.id} ({origem} → {destino})")
+                self._adicionar_log(
+                    f"✓ Viagem iniciada: Veículo {
+                        veiculo.id_veiculo} → Pedido #{
+                        pedido.id} ({origem} → {destino})")
 
         elif tipo == "reject":
             self.pedidos_rejeitados += 1

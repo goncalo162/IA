@@ -36,7 +36,7 @@ def _on_button_release(app, event):
         app._drag_start = None
         app._xlim_start = None
         app._ylim_start = None
-        
+
         # Guardar viewport após pan terminar
         try:
             if hasattr(app, "viewport"):
@@ -51,7 +51,7 @@ def _on_motion(app, event):
         return
     if event.inaxes != app.ax:
         return
-    
+
     dx = event.x - app._drag_start[0]
     dy = event.y - app._drag_start[1]
     inv = app.ax.transData.inverted()
@@ -59,7 +59,7 @@ def _on_motion(app, event):
     x1, y1 = inv.transform((event.x, event.y))
     dx_data = x0 - x1
     dy_data = y0 - y1
-    
+
     if app._xlim_start and app._ylim_start:
         xlim0, xlim1 = app._xlim_start
         ylim0, ylim1 = app._ylim_start
@@ -72,40 +72,40 @@ def _on_scroll(app, event):
     """Zoom com scroll do rato - guardar estado após zoom."""
     if event.inaxes != app.ax:
         return
-    
+
     xdata, ydata = event.xdata, event.ydata
     if xdata is None or ydata is None:
         return
-    
+
     base_scale = 1.15
     if getattr(event, "button", None) == "up":
         scale_factor = 1 / base_scale
     else:
         scale_factor = base_scale
-    
+
     cur_xlim = app.ax.get_xlim()
     cur_ylim = app.ax.get_ylim()
     new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
     new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
-    
+
     relx = (cur_xlim[1] - xdata) / (cur_xlim[1] - cur_xlim[0]
                                     ) if cur_xlim[1] != cur_xlim[0] else 0.5
     rely = (cur_ylim[1] - ydata) / (cur_ylim[1] - cur_ylim[0]
                                     ) if cur_ylim[1] != cur_ylim[0] else 0.5
-    
+
     new_xmin = xdata - (1 - relx) * new_width
     new_xmax = xdata + (relx) * new_width
     new_ymin = ydata - (1 - rely) * new_height
     new_ymax = ydata + (rely) * new_height
-    
+
     app.ax.set_xlim(new_xmin, new_xmax)
     app.ax.set_ylim(new_ymin, new_ymax)
-    
+
     # Guardar viewport após zoom
     try:
         if hasattr(app, 'viewport'):
             app.viewport.save_state(app.ax)
     except Exception as e:
         print(f"[InteractionHandler] Erro ao salvar viewport no scroll: {e}")
-    
+
     app.canvas.draw_idle()

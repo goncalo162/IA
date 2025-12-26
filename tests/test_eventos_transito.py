@@ -25,17 +25,17 @@ class TestAlteracaoTransitoGrafo:
         # Aresta "Rua da Sé" existe no grafo
         aresta = self.grafo.getEdgeByName("Rua da Sé")
         assert aresta is not None, "Aresta 'Rua da Sé' deve existir"
-        
+
         nivel_original = aresta.getTransito()
-        
+
         # Alterar para MUITO_ELEVADO
         resultado = self.grafo.alterarTransitoAresta("Rua da Sé", NivelTransito.MUITO_ELEVADO)
-        assert resultado == True, "Deve retornar True ao alterar aresta existente"
+        assert resultado, "Deve retornar True ao alterar aresta existente"
         assert aresta.getTransito() == NivelTransito.MUITO_ELEVADO
-        
+
         # Restaurar para NORMAL
         resultado = self.grafo.alterarTransitoAresta("Rua da Sé", NivelTransito.NORMAL)
-        assert resultado == True
+        assert resultado
         assert aresta.getTransito() == NivelTransito.NORMAL
 
     def test_alterar_transito_aresta_inexistente(self):
@@ -47,16 +47,16 @@ class TestAlteracaoTransitoGrafo:
         """Verifica que consegue definir ACIDENTE e que afeta o tempo de percurso."""
         aresta = self.grafo.getEdgeByName("Rua da Sé")
         assert aresta is not None
-        
+
         # Tempo normal
         tempo_normal = aresta.getTempoPercorrer()
         assert tempo_normal is not None and tempo_normal > 0
-        
+
         # Definir acidente
         self.grafo.alterarTransitoAresta("Rua da Sé", NivelTransito.ACIDENTE)
         tempo_acidente = aresta.getTempoPercorrer()
         assert tempo_acidente is None, "Com ACIDENTE, tempo de percorrer deve ser None"
-        
+
         # Restaurar
         self.grafo.alterarTransitoAresta("Rua da Sé", NivelTransito.NORMAL)
         tempo_restaurado = aresta.getTempoPercorrer()
@@ -86,7 +86,7 @@ class TestCarregarEventosTransito:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             f.write("isto não é json válido {{{")
             temp_path = f.name
-        
+
         try:
             num_eventos = self.gestor.carregar_eventos_transito(temp_path)
             assert num_eventos == 0
@@ -96,10 +96,11 @@ class TestCarregarEventosTransito:
     def test_eventos_carregados_tem_dados_corretos(self):
         """Verifica que os eventos carregados têm os dados esperados."""
         self.gestor.carregar_eventos_transito('dataset/eventos_transito.json')
-        
-        eventos_transito = [e for e in self.gestor.eventos if e.tipo == TipoEvento.ALTERACAO_TRANSITO]
+
+        eventos_transito = [e for e in self.gestor.eventos if e.tipo ==
+                            TipoEvento.ALTERACAO_TRANSITO]
         assert len(eventos_transito) > 0
-        
+
         for evento in eventos_transito:
             assert 'aresta' in evento.dados_extra
             assert 'nivel' in evento.dados_extra
@@ -114,7 +115,7 @@ class TestAgendarEventosTransito:
         self.grafo = Grafo.from_json_file('dataset/grafo.json')
         self.gestor = GestorEventos()
         self.tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
-        
+
         # Callback para alterar trânsito
         def alterar_transito(aresta: str, nivel: str) -> bool:
             try:
@@ -122,17 +123,17 @@ class TestAgendarEventosTransito:
                 return self.grafo.alterarTransitoAresta(aresta, nivel_enum)
             except KeyError:
                 return False
-        
+
         self.callback_alterar = alterar_transito
 
     def test_agendar_eventos_transito(self):
         """Verifica que os eventos são agendados corretamente."""
         self.gestor.carregar_eventos_transito('dataset/eventos_transito.json')
         num_agendados = self.gestor.agendar_eventos_transito(
-            self.tempo_inicial, 
+            self.tempo_inicial,
             self.callback_alterar
         )
-        
+
         assert num_agendados > 0, "Deve agendar pelo menos um evento"
         assert self.gestor.fila_temporal.tem_eventos()
 
@@ -150,24 +151,24 @@ class TestAgendarEventosTransito:
                 }
             ]
         }
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(eventos_json, f)
             temp_path = f.name
-        
+
         try:
             # Verificar nível inicial
             aresta = self.grafo.getEdgeByName("Rua da Sé")
             nivel_inicial = aresta.getTransito()
-            
+
             # Carregar e agendar
             self.gestor.carregar_eventos_transito(temp_path)
             self.gestor.agendar_eventos_transito(self.tempo_inicial, self.callback_alterar)
-            
+
             # Avançar tempo e processar
             tempo_apos_evento = self.tempo_inicial + timedelta(minutes=10)
             self.gestor.processar_eventos_ate(tempo_apos_evento)
-            
+
             # Verificar que o trânsito mudou
             assert aresta.getTransito() == NivelTransito.MUITO_ELEVADO
         finally:
@@ -187,23 +188,23 @@ class TestAgendarEventosTransito:
                 }
             ]
         }
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(eventos_json, f)
             temp_path = f.name
-        
+
         try:
             aresta = self.grafo.getEdgeByName("Rua da Sé")
-            
+
             # Carregar e agendar
             self.gestor.carregar_eventos_transito(temp_path)
             self.gestor.agendar_eventos_transito(self.tempo_inicial, self.callback_alterar)
-            
+
             # Avançar para depois do evento inicial (minuto 5)
             tempo_durante = self.tempo_inicial + timedelta(minutes=7)
             self.gestor.processar_eventos_ate(tempo_durante)
             assert aresta.getTransito() == NivelTransito.MUITO_ELEVADO, "Deve estar MUITO_ELEVADO após evento"
-            
+
             # Avançar para depois da restauração (minuto 5 + 10 = 15)
             tempo_apos_restauracao = self.tempo_inicial + timedelta(minutes=20)
             self.gestor.processar_eventos_ate(tempo_apos_restauracao)
@@ -231,29 +232,29 @@ class TestAgendarEventosTransito:
                 }
             ]
         }
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(eventos_json, f)
             temp_path = f.name
-        
+
         try:
             aresta = self.grafo.getEdgeByName("Rua da Sé")
-            
+
             self.gestor.carregar_eventos_transito(temp_path)
             self.gestor.agendar_eventos_transito(self.tempo_inicial, self.callback_alterar)
-            
+
             # Minuto 7: deve estar ELEVADO
             self.gestor.processar_eventos_ate(self.tempo_inicial + timedelta(minutes=7))
             assert aresta.getTransito() == NivelTransito.ELEVADO
-            
+
             # Minuto 12: deve estar NORMAL (após restauração do primeiro)
             self.gestor.processar_eventos_ate(self.tempo_inicial + timedelta(minutes=12))
             assert aresta.getTransito() == NivelTransito.NORMAL
-            
+
             # Minuto 17: deve estar ACIDENTE
             self.gestor.processar_eventos_ate(self.tempo_inicial + timedelta(minutes=17))
             assert aresta.getTransito() == NivelTransito.ACIDENTE
-            
+
             # Minuto 30: deve estar NORMAL (após restauração do segundo)
             self.gestor.processar_eventos_ate(self.tempo_inicial + timedelta(minutes=30))
             assert aresta.getTransito() == NivelTransito.NORMAL
@@ -269,25 +270,25 @@ class TestEventosTransitoComGrafoReal:
         self.grafo = Grafo.from_json_file('dataset/grafo.json')
         self.gestor = GestorEventos()
         self.tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
-        
+
         def alterar_transito(aresta: str, nivel: str) -> bool:
             try:
                 nivel_enum = NivelTransito[nivel]
                 return self.grafo.alterarTransitoAresta(aresta, nivel_enum)
             except KeyError:
                 return False
-        
+
         self.callback_alterar = alterar_transito
 
     def test_eventos_reais_sao_executados(self):
         """Verifica que os eventos do ficheiro real são executados sem erros."""
         self.gestor.carregar_eventos_transito('dataset/eventos_transito.json')
         self.gestor.agendar_eventos_transito(self.tempo_inicial, self.callback_alterar)
-        
+
         # Processar todos os eventos (simular 4 horas)
         tempo_final = self.tempo_inicial + timedelta(hours=4)
         eventos_processados = self.gestor.processar_eventos_ate(tempo_final)
-        
+
         assert len(eventos_processados) > 0, "Deve processar pelo menos um evento"
 
 

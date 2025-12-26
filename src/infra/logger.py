@@ -14,22 +14,22 @@ VELOCIDADE_MAXIMA_SINCRONIZADA = float(os.getenv('VELOCIDADE_MAXIMA_SINCRONIZADA
 
 class SimuladorLogger:
     """Classe responsável por gerir logs da simulação."""
-    
+
     def __init__(self, project_root: str = None):
         """Inicializa o logger.
-        
+
         Args:
             project_root: Caminho raiz do projeto. Se None, usa o diretório atual.
         """
         if project_root is None:
             project_root = os.path.dirname(os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__))))
-        
+
         self.project_root = project_root
         self.log_ficheiro = None
         self.run_timestamp = None
         self._configurar_logging()
-    
+
     def _configurar_logging(self):
         """Configura sistema de logging com timestamp para ficheiro."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -43,43 +43,48 @@ class SimuladorLogger:
             f.write(f"=== SIMULAÇÃO DE GESTÃO DE FROTA ===\n")
             f.write(f"Timestamp: {timestamp}\n")
             f.write(f"Início: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("="*60 + "\n\n")
-    
+            f.write("=" * 60 + "\n\n")
+
     def log(self, mensagem: str):
         """Escreve mensagem no log.
-        
+
         Args:
             mensagem: Mensagem a ser escrita no log
         """
         with open(self.log_ficheiro, 'a', encoding='utf-8') as f:
             f.write(mensagem + '\n')
-    
+
     def log_separador(self, caractere: str = "=", tamanho: int = 60):
         """Escreve um separador no log.
-        
+
         Args:
             caractere: Caractere a usar no separador
             tamanho: Tamanho do separador
         """
         self.log(caractere * tamanho)
-    
+
     def log_secao(self, titulo: str):
         """Escreve uma seção no log com separadores.
-        
+
         Args:
             titulo: Título da seção
         """
-        self.log("\n" + "="*60)
+        self.log("\n" + "=" * 60)
         self.log(titulo)
-        self.log("="*60)
-    
+        self.log("=" * 60)
+
     def get_caminho_log(self) -> str:
         """Retorna o caminho do ficheiro de log."""
         return self.log_ficheiro
-    
-    def dados_carregados(self, num_nos: int, num_veiculos: int, num_pedidos: int, num_eventos: int = 0):
+
+    def dados_carregados(
+            self,
+            num_nos: int,
+            num_veiculos: int,
+            num_pedidos: int,
+            num_eventos: int = 0):
         """Registra no log os dados carregados.
-        
+
         Args:
             num_nos: Número de nós carregados
             num_veiculos: Número de veículos carregados
@@ -91,12 +96,19 @@ class SimuladorLogger:
         self.log(f"- Número de veículos: {num_veiculos}")
         self.log(f"- Número de pedidos: {num_pedidos}")
         if num_eventos > 0:
-            self.log(f"-  Número de eventos: {num_eventos}") #NOTA: não sei se depois tivermos mais tipos de eventos querem separá-los
+            # NOTA: não sei se depois tivermos mais tipos de eventos querem separá-los
+            self.log(f"-  Número de eventos: {num_eventos}")
         self.log_separador()
 
-    def simulacao_iniciada(self, duracao_horas: float, inicio: datetime, velocidade_simulacao: float, frequencia_calculo: float, passo_tempo: timedelta):
+    def simulacao_iniciada(
+            self,
+            duracao_horas: float,
+            inicio: datetime,
+            velocidade_simulacao: float,
+            frequencia_calculo: float,
+            passo_tempo: timedelta):
         """Registra no log o início da simulação.
-        
+
         Args:
             duracao_horas: Duração total da simulação em horas
         """
@@ -122,6 +134,12 @@ class SimuladorLogger:
         """Loga informações da viagem."""
         self.log(f"  [green][/] Rota veículo->cliente: {' → '.join(rota_ate_cliente)}")
         self.log(f"  [green][/] Rota cliente->destino: {' → '.join(rota_viagem)}")
-        self.log(f"    Distância: {distancia_total:.2f} km ({metricas_viagem['tempo_ate_cliente'] + metricas_viagem['tempo_viagem']:.1f} min)")
-        self.log(f"    Custo: €{metricas_viagem['custo']:.2f} |  Emissões: {metricas_viagem['emissoes']:.2f} kg CO₂")
-        
+        self.log(
+            f"    Distância: {
+                distancia_total:.2f} km ({
+                metricas_viagem['tempo_ate_cliente'] +
+                metricas_viagem['tempo_viagem']:.1f} min)")
+        self.log(
+            f"    Custo: €{
+                metricas_viagem['custo']:.2f} |  Emissões: {
+                metricas_viagem['emissoes']:.2f} kg CO₂")

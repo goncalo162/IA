@@ -23,7 +23,7 @@ class Pedido:
         self._destino = destino
         self._numero_passageiros = passageiros
         self._horario_pretendido = horario_pretendido
-        self._prioridade = prioridade # Maior valor = maior prioridade (0 a 5)
+        self._prioridade = prioridade  # Maior valor = maior prioridade (0 a 5)
         self._preferencia_ambiental = preferencia_ambiental
         self._ride_sharing = bool(ride_sharing)
         self._estado: EstadoPedido = EstadoPedido.PENDENTE
@@ -31,7 +31,7 @@ class Pedido:
 
     def __str__(self) -> str:
         return (f"Pedido #{self.id}: {self.origem} → {self.destino} | "
-            f"{self.numero_passageiros} pax | prioridade {self.prioridade} | "
+                f"{self.numero_passageiros} pax | prioridade {self.prioridade} | "
                 f"estado: {self.estado.name}")
 
     def __eq__(self, other):
@@ -87,4 +87,3 @@ class Pedido:
         if not isinstance(value, EstadoPedido):
             raise ValueError("estado deve ser um EstadoPedido")
         self._estado = value
-

@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
-from infra.entidades.viagem import Viagem, ViagemRecarga
+from infra.entidades.viagem import Viagem, ViagemRecarga, ViagemReposicionamento
+from infra.entidades.recarga import PlanoRecarga
 from infra.grafo.node import TipoNodo
 
 
@@ -27,19 +28,25 @@ class Veiculo(ABC):
         self._custo_operacional_km = custo_operacional_km
         self._estado = estado
         self._localizacao_atual = localizacao_atual  # ID ou nome do nó onde o veículo está
-        self.viagens: List[Viagem] = [] # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
+        # Um veículo pode ter múltiplas viagens simultâneas (ride-sharing)
+        self.viagens: List[Viagem] = []
         self.viagem_recarga = None  # Viagem até posto de abastecimento/recarga
-        
+        self.viagem_reposicionamento = None  # Viagem de reposicionamento proativo
+
         # Controlo de recarga/abastecimento
         self._autonomia_critica_percentual = autonomia_critica_percentual  # % mínima de autonomia
         self._tempo_recarga_inicio = None  # Timestamp de quando iniciou a recarga
-        self._localizacao_abastecimento = None  # Onde está a reabastecer, TODO: REVER, ACHO QUE NAO PRECISA DESTE PARAMETRO
+        # Onde está a reabastecer, TODO: REVER, ACHO QUE NAO PRECISA DESTE PARAMETRO
+        self._localizacao_abastecimento = None
+        # Dados auxiliares de plano de recarga para scoring
+        self.plano_recarga_pendente: Optional[PlanoRecarga] = None
 
         # Dados auxiliares da possível próxima viagem (rota veículo->cliente)
-        #TODO: ver onde faz sentido voltar a meter isto a zeros para nao ficar com dados obsoletos (se estiver em andamento por exemplo, e mudar a localiação antes de começar a viagem)
+        # TODO: ver onde faz sentido voltar a meter isto a zeros para nao ficar
+        # com dados obsoletos (se estiver em andamento por exemplo, e mudar a
+        # localiação antes de começar a viagem)
         self._rota_ate_cliente: list = []
         self._distancia_ate_cliente: float = 0.0
-
 
     def reabastecer(self):
         """Reabastece o veículo, restaurando sua autonomia ao máximo."""
@@ -50,36 +57,39 @@ class Veiculo(ABC):
     @abstractmethod
     def tempoReabastecimento(self):
         return
-    
+
     @abstractmethod
     def tipo_posto_necessario(self):
         """Retorna o tipo de posto necessário para este veículo."""
         return
-    
+
     def precisa_reabastecer(self) -> bool:
         """Verifica se o veículo precisa de recarga/abastecimento.
-        
+
         Returns:
             True se autonomia atual está abaixo do limiar crítico
         """
-       
+
         return self.percentual_autonomia_atual <= self._autonomia_critica_percentual
-    
-    def autonomia_suficiente_para(self, distancia_km: float, margem_seguranca: float = 10.0) -> bool:
+
+    def autonomia_suficiente_para(
+            self,
+            distancia_km: float,
+            margem_seguranca: float = 10.0) -> bool:
         """Verifica se o veículo tem autonomia suficiente para percorrer uma distância.
-        
+
         Args:
             distancia_km: Distância a percorrer em km
             margem_seguranca: Margem de segurança adicional em km
-            
+
         Returns:
             True se a autonomia atual é suficiente
         """
         return self._autonomia_atual >= (distancia_km + margem_seguranca)
-    
+
     def iniciar_recarga(self, tempo_inicio, localizacao: str = None):
         """Inicia o processo de recarga/abastecimento.
-        
+
         Args:
             tempo_inicio: Timestamp do início da recarga
             localizacao: Localização onde está a reabastecer
@@ -87,24 +97,24 @@ class Veiculo(ABC):
         self._estado = EstadoVeiculo.EM_REABASTECIMENTO
         self._tempo_recarga_inicio = tempo_inicio
         self._localizacao_abastecimento = localizacao or self._localizacao_atual
-    
-    def iniciar_viagem_recarga(self, rota: list, destino_posto: str, 
+
+    def iniciar_viagem_recarga(self, rota: list, destino_posto: str,
                                distancia: float, tempo_inicio, grafo) -> bool:
         """Inicia uma viagem até um posto de abastecimento/recarga.
-        
+
         Args:
             rota: Rota até o posto
             destino_posto: Nome do nó do posto
             distancia: Distância total até o posto
             tempo_inicio: Timestamp de início
             grafo: Grafo do ambiente
-            
+
         Returns:
             True se iniciou com sucesso
         """
         if not rota or len(rota) < 2:
             return False
-        
+
         self.viagem_recarga = ViagemRecarga(
             rota=rota,
             destino_posto=destino_posto,
@@ -114,30 +124,31 @@ class Veiculo(ABC):
         )
         self._estado = EstadoVeiculo.EM_ANDAMENTO
         return True
-    
+
     def concluir_viagem_recarga(self):
         """Finaliza a viagem de recarga quando o veículo chega ao posto."""
         if self.viagem_recarga:
             self._localizacao_atual = self.viagem_recarga.destino_posto
             self.viagem_recarga = None
-    
+            self.estado = EstadoVeiculo.DISPONIVEL
+
     def pode_reabastecer_em(self, localizacao: str, grafo) -> bool:
         """Verifica se o veículo pode reabastecer na localização atual.
-        
+
         Args:
             localizacao: Nome do nó onde o veículo está
             grafo: Grafo para verificar tipo de nó
-            
+
         Returns:
             True se a localização é um posto adequado para este tipo de veículo
         """
         if not grafo:
             return False
-        
+
         node = grafo.get_node_by_name(localizacao)
         if not node:
             return False
-        
+
         return node.getTipoNodo() == self.tipo_posto_necessario()
 
     def adicionar_passageiros(self, numero: int):
@@ -146,14 +157,15 @@ class Veiculo(ABC):
             self._numero_passageiros += numero
             return True
         return False
-    
+
     def remover_passageiros(self, numero: int):
         """Remove passageiros do veículo, garantindo que não fique negativo."""
         self._numero_passageiros = max(0, self._numero_passageiros - numero)
 
     def atualizar_autonomia(self, km_percorridos: int):
         """Reduz a autonomia atual de acordo com a distância percorrida"""
-        self.autonomia_atual = max(0, self.autonomia_atual - km_percorridos)  # Evita autonomia negativa
+        self.autonomia_atual = max(0, self.autonomia_atual -
+                                   km_percorridos)  # Evita autonomia negativa
 
     def destinos_viagens_ativas(self) -> List[str]:
         """Retorna lista de destinos das viagens ativas."""
@@ -162,7 +174,6 @@ class Veiculo(ABC):
             if v.viagem_ativa and v.destino is not None:
                 destinos.append(v.destino)
         return destinos
-
 
     def __str__(self):
         return (f"{self.__class__.__name__} [{self.id_veiculo}] | "
@@ -222,15 +233,16 @@ class Veiculo(ABC):
 
     @property
     def viagem_ativa(self):
-        """Indica se há alguma viagem ativa neste veículo (pedidos ou recarga)."""
+        """Indica se há alguma viagem ativa neste veículo (pedidos, recarga ou reposicionamento)."""
         tem_viagem_pedido = any(v.viagem_ativa for v in self.viagens)
         tem_viagem_recarga = self.viagem_recarga is not None and self.viagem_recarga.viagem_ativa
-        return tem_viagem_pedido or tem_viagem_recarga
+        tem_viagem_reposicionamento = self.viagem_reposicionamento is not None and self.viagem_reposicionamento.viagem_ativa
+        return tem_viagem_pedido or tem_viagem_recarga or tem_viagem_reposicionamento
 
     @property
     def aceita_ridesharing(self) -> bool:
         """Indica se o veículo aceita ride-sharing.
-        
+
         Um veículo aceita ride-sharing se:
         - Está disponível (sem viagens ativas), ou
         - Todas as viagens ativas têm pedidos com ride_sharing=True
@@ -258,8 +270,44 @@ class Veiculo(ABC):
     def distancia_ate_cliente(self, value: float):
         self._distancia_ate_cliente = float(
             value) if value is not None else 0.0
-        
+
     # -------------------- métodos auxiliares para as suas viagens --------------------
+
+    def iniciar_viagem_reposicionamento(self, rota: list, distancia: float, tempo_simulacao, grafo) -> bool:
+        """
+        Inicia uma viagem de reposicionamento vazia.
+
+        Args:
+            rota: Rota calculada para o reposicionamento
+            distancia: Distância total da rota (km)
+            tempo_simulacao: Tempo atual da simulação
+
+        Returns:
+            True se a viagem foi iniciada com sucesso
+        """
+        if not rota or len(rota) < 2:
+            return False
+
+        # Criar viagem de reposicionamento (sem pedido associado)
+        self.viagem_reposicionamento = ViagemReposicionamento(
+            rota=rota,
+            distancia_total=distancia,
+            tempo_inicio=tempo_simulacao,
+            grafo=grafo
+        )
+
+        # Mudar estado
+        self.estado = EstadoVeiculo.EM_ANDAMENTO
+
+        return True
+    
+    def concluir_viagem_reposicionamento(self):
+        """Finaliza a viagem de reposicionamento quando o veículo chega ao destino."""
+        if self.viagem_reposicionamento:
+            self._localizacao_atual = self.viagem_reposicionamento.destino
+            self.viagem_reposicionamento = None
+            self.estado = EstadoVeiculo.DISPONIVEL
+    
 
     def iniciar_viagem(self, pedido,
                        rota_ate_cliente: list,
@@ -275,7 +323,7 @@ class Veiculo(ABC):
         não pode exceder a capacidade do veículo, a menos que a lógica
         externa permita divisão de embarques.
         """
-        
+
         passageiros_novos = pedido.numero_passageiros
 
         if (not self.adicionar_passageiros(passageiros_novos)):
@@ -300,13 +348,14 @@ class Veiculo(ABC):
         """Atualiza o progresso de todas as viagens ativas e autonomia proporcional.
 
         Retorna lista de viagens concluídas neste passo.
-        
+
         NOTA: A viagem de recarga é processada separadamente em GestaoAmbiente.atualizar_viagens_ativas()
         """
         viagens_concluidas: List[Viagem] = []
         chegou_posto = False
+        chegou_destino_reposicionamento = False
         distancia_total_avancada = 0.0
-                
+
         # Atualizar viagem de recarga se existir
         if self.viagem_recarga and self.viagem_recarga.viagem_ativa:
             distancia_antes = self.viagem_recarga.distancia_percorrida
@@ -314,14 +363,28 @@ class Veiculo(ABC):
             distancia_depois = self.viagem_recarga.distancia_percorrida
             distancia_avancada = max(0.0, distancia_depois - distancia_antes)
             distancia_total_avancada += distancia_avancada
-            
+
             # Atualizar localização enquanto viaja
             if self.viagem_recarga.localizacao_atual:
                 self._localizacao_atual = self.viagem_recarga.localizacao_atual
-            
+
             if concluida:
                 chegou_posto = True
-                
+
+        # Atualizar viagem de reposicionamento se existir
+        if self.viagem_reposicionamento and self.viagem_reposicionamento.viagem_ativa:
+            distancia_antes = self.viagem_reposicionamento.distancia_percorrida
+            concluida = self.viagem_reposicionamento.atualizar_progresso(tempo_decorrido_horas)
+            distancia_depois = self.viagem_reposicionamento.distancia_percorrida
+            distancia_avancada = max(0.0, distancia_depois - distancia_antes)
+            distancia_total_avancada += distancia_avancada
+
+            # Atualizar localização enquanto viaja
+            if self.viagem_reposicionamento.localizacao_atual:
+                self._localizacao_atual = self.viagem_reposicionamento.localizacao_atual
+
+            if concluida:
+                chegou_destino_reposicionamento = True
 
         # Atualizar viagens de pedidos
         for v in list(self.viagens):
@@ -338,7 +401,7 @@ class Veiculo(ABC):
         if distancia_total_avancada > 0:
             self.atualizar_autonomia(distancia_total_avancada)
 
-        return viagens_concluidas, chegou_posto
+        return viagens_concluidas, chegou_posto, chegou_destino_reposicionamento
 
     def concluir_viagem(self, viagem: Viagem):
         """Finaliza apenas a viagem fornecida.
@@ -355,7 +418,7 @@ class Veiculo(ABC):
             self.remover_passageiros(passageiros_remover)
             self.viagens.remove(viagem)
 
-            if not self.viagem_ativa: # Atualizar estado do veículo conforme viagens remanescentes
+            if not self.viagem_ativa:  # Atualizar estado do veículo conforme viagens remanescentes
                 self.estado = EstadoVeiculo.DISPONIVEL
 
     @property
@@ -365,27 +428,27 @@ class Veiculo(ABC):
         if not ativos:
             return 0.0
         return sum(ativos) / len(ativos)
-    
+
     @property
     def progresso_percentual(self) -> List[float]:
         """Retorna o progresso de todas as viagens ativas (0-100)."""
         return [v.progresso_percentual for v in self.viagens if v.viagem_ativa]
-    
+
     @property
     def autonomia_critica_percentual(self) -> float:
         """Retorna o percentual de autonomia crítica."""
         return self._autonomia_critica_percentual
-    
+
     @property
     def tempo_recarga_inicio(self):
         """Retorna o timestamp de início da recarga."""
         return self._tempo_recarga_inicio
-    
+
     @property
     def localizacao_abastecimento(self) -> str:
         """Retorna a localização de abastecimento."""
         return self._localizacao_abastecimento
-    
+
     @property
     def percentual_autonomia_atual(self) -> float:
         """Retorna o percentual de autonomia atual."""
@@ -418,7 +481,6 @@ class Veiculo(ABC):
             if v.viagem_ativa and v.passa_por(local):
                 return True
         return False
-    
 
     def rota_total_viagens(self) -> list[str]:
         """
@@ -439,7 +501,6 @@ class Veiculo(ABC):
 
         return combinado
 
-
     def merge_rotas(self, combinado: list[str], nova: list[str]) -> list[str]:
         """
         Une duas rotas removendo a maior sobreposição possível entre
@@ -459,11 +520,11 @@ class Veiculo(ABC):
 
     def viagens_afetadas_por_aresta(self, nome_aresta: str, grafo) -> List[Viagem]:
         """Retorna lista de viagens ativas que passam por uma aresta específica.
-        
+
         Args:
             nome_aresta: Nome da aresta a verificar
             grafo: Grafo para obter informação das arestas
-            
+
         Returns:
             Lista de viagens afetadas pela alteração na aresta
         """
@@ -481,12 +542,18 @@ class VeiculoCombustao(Veiculo):
     def __init__(self, id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
                  # meter custo litro por kilometro se for preciso
                  custo_operacional_km, numero_passageiros=0, localizacao_atual=0):
-        super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                         numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
+        super().__init__(
+            id_veiculo,
+            autonomia_maxima,
+            autonomia_atual,
+            capacidade_passageiros,
+            numero_passageiros,
+            custo_operacional_km,
+            localizacao_atual=localizacao_atual)
 
     def tempoReabastecimento(self):
         return 5  # tempo fixo de reabastecimento em minutos, NOTA: pode ser ajustado conforme necessário
-    
+
     def tipo_posto_necessario(self):
         """Veículos a combustão precisam de bomba de gasolina."""
 
@@ -496,18 +563,32 @@ class VeiculoCombustao(Veiculo):
 # -------------------- Veículo Elétrico ---------------- #
 
 class VeiculoEletrico(Veiculo):
-    def __init__(self, id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                 custo_operacional_km, tempo_recarga_km: int, numero_passageiros=0, localizacao_atual=0):
-        super().__init__(id_veiculo, autonomia_maxima, autonomia_atual, capacidade_passageiros,
-                         numero_passageiros, custo_operacional_km, localizacao_atual=localizacao_atual)
-        
-        self._tempo_recarga_km = tempo_recarga_km # tempo médio para carga de um km 
+    def __init__(
+            self,
+            id_veiculo,
+            autonomia_maxima,
+            autonomia_atual,
+            capacidade_passageiros,
+            custo_operacional_km,
+            tempo_recarga_km: int,
+            numero_passageiros=0,
+            localizacao_atual=0):
+        super().__init__(
+            id_veiculo,
+            autonomia_maxima,
+            autonomia_atual,
+            capacidade_passageiros,
+            numero_passageiros,
+            custo_operacional_km,
+            localizacao_atual=localizacao_atual)
+
+        self._tempo_recarga_km = tempo_recarga_km  # tempo médio para carga de um km
 
     def tempoReabastecimento(self):
         tempo = self.tempo_recarga_km * \
             (self.autonomia_maxima - self.autonomia_atual)
         return tempo
-    
+
     def tipo_posto_necessario(self):
         """Veículos elétricos precisam de postos de carregamento."""
         return TipoNodo.POSTO_CARREGAMENTO
@@ -515,5 +596,3 @@ class VeiculoEletrico(Veiculo):
     @property
     def tempo_recarga_km(self) -> int:
         return self._tempo_recarga_km
-
-

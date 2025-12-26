@@ -15,7 +15,7 @@ def compute_layout_spring(G, scale=1.0, k_factor=6.0):
     base_k = math.sqrt(1.0 / n)
     k_value = base_k * k_factor
     layout_scale = 10.0 * scale
-    
+
     pos = nx.spring_layout(G, seed=42, k=k_value, scale=layout_scale, iterations=300)
     return pos
 
@@ -29,11 +29,11 @@ def compute_layout_kamada_kawai(G, scale=1.0):
 def compute_layout_best(G, scale=1.0):
     """
     Escolhe o melhor layout baseado no tamanho do grafo.
-    
+
     scale: multiplicador de espaçamento (1.0 = normal, 2.0 = 2x mais espaço)
     """
     n = G.number_of_nodes()
-    
+
     if n < 10:
         # Pequeno grafo: circular é bom
         return compute_layout_circular(G, scale)
@@ -48,7 +48,7 @@ def compute_layout_best(G, scale=1.0):
 def compute_layout_spacious(G, scale=1.0):
     """Layout com MUITO espaçamento (use isto para visualização confortável)."""
     n = G.number_of_nodes()
-    
+
     # Aumentar k_factor significativamente
     if n < 10:
         return compute_layout_circular(G, scale * 2.0)
@@ -61,7 +61,7 @@ def compute_layout_spacious(G, scale=1.0):
 def compute_layout_compact(G, scale=1.0):
     """Layout compacto (use isto para muitos nós)."""
     n = G.number_of_nodes()
-    
+
     if n < 10:
         return compute_layout_circular(G, scale * 0.7)
     elif n < 50:

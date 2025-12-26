@@ -42,8 +42,8 @@ class Evento:
         self.ativo = False
 
 
-# NOTA: ativar e desativar não deveria deveria ter um metodo associado que altera internamente o estado do sistema?
-
+# NOTA: ativar e desativar não deveria deveria ter um metodo associado que
+# altera internamente o estado do sistema?
 
     def ativar(self):
         """Ativa o evento."""
@@ -239,10 +239,10 @@ class GestorEventos:
         """
         Carrega eventos de trânsito de um ficheiro JSON para self.eventos.
         Os eventos são armazenados mas não agendados - usar agendar_eventos_transito() para isso.
-        
+
         Args:
             ficheiro_json: Caminho para o ficheiro JSON com eventos de trânsito
-            
+
         Returns:
             Número de eventos carregados
         """
@@ -253,19 +253,19 @@ class GestorEventos:
             return 0
         except json.JSONDecodeError:
             return 0
-        
+
         eventos_carregados = 0
-        
+
         for evento_data in dados.get("eventos", []):
             minuto = evento_data.get("minuto_simulacao", 0)
             aresta_nome = evento_data.get("aresta")
             nivel_str = evento_data.get("nivel", "NORMAL")
             duracao = evento_data.get("duracao_minutos")
             descricao = evento_data.get("descricao", "")
-            
+
             if not aresta_nome:
                 continue
-            
+
             # Criar evento de alteração de trânsito
             evento = Evento(
                 tipo=TipoEvento.ALTERACAO_TRANSITO,
@@ -280,38 +280,38 @@ class GestorEventos:
             )
             self.eventos.append(evento)
             eventos_carregados += 1
-        
+
         return eventos_carregados
 
     def agendar_eventos_transito(self, tempo_inicial: datetime,
-                                  callback_alterar_transito: Callable[[str, str], bool]):
+                                 callback_alterar_transito: Callable[[str, str], bool]):
         """
         Agenda todos os eventos de trânsito carregados na fila temporal.
-        
+
         Args:
             tempo_inicial: Tempo inicial da simulação (os minutos são relativos a este)
             callback_alterar_transito: Função que recebe (nome_aresta, nivel_str) e aplica a alteração
-            
+
         Returns:
             Número de eventos agendados
         """
         eventos_agendados = 0
-        
+
         for evento in self.eventos:
             if evento.tipo != TipoEvento.ALTERACAO_TRANSITO:
                 continue
-            
+
             dados = evento.dados_extra
             minuto = dados.get('minuto_simulacao', 0)
             aresta_nome = dados.get('aresta')
             nivel_str = dados.get('nivel', 'NORMAL')
             duracao = evento.duracao_minutos
             descricao = dados.get('descricao', '')
-            
+
             # Calcular tempo absoluto do evento
             tempo_evento = tempo_inicial + timedelta(minutes=minuto)
             evento.timestamp = tempo_evento
-            
+
             # Agendar evento de alteração de trânsito
             self.agendar_evento(
                 tempo=tempo_evento,
@@ -320,20 +320,19 @@ class GestorEventos:
                 dados={'aresta': aresta_nome, 'nivel': nivel_str}
             )
             eventos_agendados += 1
-            
+
             # Se tiver duração, agendar evento para restaurar trânsito para NORMAL
             if duracao and nivel_str != "NORMAL":
                 tempo_restaurar = tempo_evento + timedelta(minutes=duracao)
-                
+
                 self.agendar_evento(
                     tempo=tempo_restaurar,
                     tipo=TipoEvento.ALTERACAO_TRANSITO,
                     callback=callback_alterar_transito,
                     dados={'aresta': aresta_nome, 'nivel': 'NORMAL'}
                 )
-        
-        return eventos_agendados #sem contar com os eventos de restauração
 
+        return eventos_agendados  # sem contar com os eventos de restauração
 
     def numero_eventos(self) -> int:
         """Retorna o número total de eventos carregados."""

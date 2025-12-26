@@ -58,7 +58,7 @@ class DisplayGrafico(DisplayBase):
         self.viagens_ativas = []
         self.velocidade_simulacao = 1.0
         self.inicializado = False
-        
+
         # Artists para atualização incremental (sem redesenhar tudo)
         self.edge_artists = []
         self.node_collections = []
@@ -66,10 +66,10 @@ class DisplayGrafico(DisplayBase):
         self.title_text = None
         self.legend_obj = None
         self.stats_text_obj = None
-        
+
         # Flag para primeiro desenho
         self.primeiro_desenho = True
-        
+
         # Variáveis para pan (arrastar)
         self.pan_ativo = False
         self.pan_start_pos = None
@@ -80,17 +80,17 @@ class DisplayGrafico(DisplayBase):
         """Conecta eventos de mouse para zoom e pan interativos."""
         # Zoom com scroll do rato
         self.fig.canvas.mpl_connect('scroll_event', self._on_scroll)
-        
+
         # Pan com botão esquerdo do rato
         self.fig.canvas.mpl_connect('button_press_event', self._on_button_press)
         self.fig.canvas.mpl_connect('button_release_event', self._on_button_release)
         self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
-    
+
     def _on_scroll(self, event):
         """Handler para zoom com scroll do rato."""
         if event.inaxes != self.ax:
             return
-        
+
         # Fator de zoom
         if event.button == 'up':
             scale_factor = 0.9  # Zoom in
@@ -98,83 +98,83 @@ class DisplayGrafico(DisplayBase):
             scale_factor = 1.1  # Zoom out
         else:
             return
-        
+
         # Obter limites atuais
         xlim = self.ax.get_xlim()
         ylim = self.ax.get_ylim()
-        
+
         # Coordenadas do cursor no sistema de dados
         xdata = event.xdata
         ydata = event.ydata
-        
+
         if xdata is None or ydata is None:
             return
-        
+
         # Calcular novos limites centralizados no cursor
         new_width = (xlim[1] - xlim[0]) * scale_factor
         new_height = (ylim[1] - ylim[0]) * scale_factor
-        
+
         relx = (xlim[1] - xdata) / (xlim[1] - xlim[0])
         rely = (ylim[1] - ydata) / (ylim[1] - ylim[0])
-        
+
         new_xlim = [xdata - new_width * (1 - relx), xdata + new_width * relx]
         new_ylim = [ydata - new_height * (1 - rely), ydata + new_height * rely]
-        
+
         # Aplicar novos limites
         self.ax.set_xlim(new_xlim)
         self.ax.set_ylim(new_ylim)
-        
+
         # Forçar atualização
         self.fig.canvas.draw_idle()
-    
+
     def _on_button_press(self, event):
         """Handler para início do pan (arrastar)."""
         if event.inaxes != self.ax or event.button != 1:
             return
-        
+
         self.pan_ativo = True
         self.pan_start_pos = (event.x, event.y)
         self.pan_start_xlim = self.ax.get_xlim()
         self.pan_start_ylim = self.ax.get_ylim()
-    
+
     def _on_button_release(self, event):
         """Handler para fim do pan."""
         if event.button != 1:
             return
-        
+
         self.pan_ativo = False
         self.pan_start_pos = None
         self.pan_start_xlim = None
         self.pan_start_ylim = None
-    
+
     def _on_mouse_move(self, event):
         """Handler para movimento do rato durante pan."""
         if not self.pan_ativo or self.pan_start_pos is None:
             return
-        
+
         if event.inaxes != self.ax:
             return
-        
+
         # Calcular deslocamento em pixels
         dx = event.x - self.pan_start_pos[0]
         dy = event.y - self.pan_start_pos[1]
-        
+
         # Converter para coordenadas de dados
         inv = self.ax.transData.inverted()
         start_data = inv.transform(self.pan_start_pos)
         current_data = inv.transform((event.x, event.y))
-        
+
         dx_data = start_data[0] - current_data[0]
         dy_data = start_data[1] - current_data[1]
-        
+
         # Aplicar deslocamento
         if self.pan_start_xlim and self.pan_start_ylim:
             new_xlim = [self.pan_start_xlim[0] + dx_data, self.pan_start_xlim[1] + dx_data]
             new_ylim = [self.pan_start_ylim[0] + dy_data, self.pan_start_ylim[1] + dy_data]
-            
+
             self.ax.set_xlim(new_xlim)
             self.ax.set_ylim(new_ylim)
-            
+
             # Forçar atualização
             self.fig.canvas.draw_idle()
 
@@ -254,7 +254,7 @@ class DisplayGrafico(DisplayBase):
         except Exception:
             self.stats_fig = None
             self.stats_ax = None
-        
+
         # Conectar eventos de mouse para zoom/pan
         self._conectar_eventos_interacao()
 
@@ -265,7 +265,8 @@ class DisplayGrafico(DisplayBase):
 
         # Controlar frequência de atualização
         agora = datetime.now()
-        if self.ultimo_update and (agora - self.ultimo_update).total_seconds() < self.intervalo_update:
+        if self.ultimo_update and (
+                agora - self.ultimo_update).total_seconds() < self.intervalo_update:
             return
 
         self.ultimo_update = agora
@@ -289,7 +290,7 @@ class DisplayGrafico(DisplayBase):
         self._desenhar_arestas()
         self._desenhar_nos()
         self._desenhar_legenda()
-        
+
         # Desenhar título (será atualizado depois)
         tempo_str = self.tempo_atual.strftime("%H:%M:%S") if self.tempo_atual else "00:00:00"
         self.title_text = self.ax.set_title(
@@ -303,7 +304,7 @@ class DisplayGrafico(DisplayBase):
 
         # Desenhar veículos (dinâmico)
         self._desenhar_veiculos()
-        
+
         # Desenhar estatísticas
         self._desenhar_estatisticas()
 
@@ -501,7 +502,13 @@ class DisplayGrafico(DisplayBase):
                         zorder=10
                     )[0]
 
-                    progresso = veiculo.progresso_percentual
+                    # Escolher viagem representativa para exibir progresso
+                    trip = self._get_trip_for_display(veiculo)
+                    if trip is not None:
+                        progresso = trip.progresso_percentual
+                    else:
+                        progresso = veiculo.progresso_percentual_medio
+
                     text_obj = self.ax.text(
                         x, y + 0.08,
                         f'V{veiculo.id_veiculo}\n{progresso:.0f}%',
@@ -512,7 +519,7 @@ class DisplayGrafico(DisplayBase):
                               'alpha': 0.8, 'edgecolor': 'black'},
                         zorder=11,
                     )
-                    
+
                     self.vehicle_artists[f"{veiculo.id_veiculo}_marker"] = marker_obj
                     self.vehicle_artists[f"{veiculo.id_veiculo}_text"] = text_obj
             else:
@@ -544,22 +551,26 @@ class DisplayGrafico(DisplayBase):
                               'alpha': 0.7, 'edgecolor': 'black'},
                         zorder=10,
                     )
-                    
+
                     self.vehicle_artists[f"{veiculo.id_veiculo}_marker"] = marker_obj
                     self.vehicle_artists[f"{veiculo.id_veiculo}_text"] = text_obj
 
     def _calcular_posicao_veiculo(self, veiculo) -> Optional[tuple]:
         """Calcula a posição interpolada de um veículo na sua rota."""
-        if not veiculo.viagem_ativa or not veiculo.viagem.rota or len(veiculo.viagem.rota) < 2:
-            if veiculo.viagem.rota and len(veiculo.viagem.rota) == 1:
-                node_nome = veiculo.viagem.rota[0]
+        if not veiculo.viagem_ativa:
+            return None
+
+        trip = self._get_trip_for_display(veiculo)
+        if trip is None or not getattr(trip, 'rota', None) or len(trip.rota) < 2:
+            if trip and getattr(trip, 'rota', None) and len(trip.rota) == 1:
+                node_nome = trip.rota[0]
                 node_id = self.ambiente.grafo.getNodeId(node_nome)
                 if node_id in self.pos:
                     return self.pos[node_id]
             return None
 
-        progresso_decimal = veiculo.progresso_percentual / 100.0
-        num_segmentos = len(veiculo.viagem.rota) - 1
+        progresso_decimal = trip.progresso_percentual / 100.0
+        num_segmentos = len(trip.rota) - 1
         posicao_segmento = progresso_decimal * num_segmentos
         indice_segmento = int(posicao_segmento)
 
@@ -569,8 +580,8 @@ class DisplayGrafico(DisplayBase):
         else:
             progresso_no_segmento = posicao_segmento - indice_segmento
 
-        origem_nome = veiculo.viagem.rota[indice_segmento]
-        destino_nome = veiculo.viagem.rota[indice_segmento + 1]
+        origem_nome = trip.rota[indice_segmento]
+        destino_nome = trip.rota[indice_segmento + 1]
         origem_id = self.ambiente.grafo.getNodeId(origem_nome)
         destino_id = self.ambiente.grafo.getNodeId(destino_nome)
 
@@ -584,6 +595,26 @@ class DisplayGrafico(DisplayBase):
         y = y_origem + (y_destino - y_origem) * progresso_no_segmento
 
         return (x, y)
+
+    def _get_trip_for_display(self, veiculo):
+        """Retorna a viagem a usar para exibir posição/progresso.
+
+        Prioridade: reposicionamento > recarga > primeiro pedido ativo
+        """
+        # Reposicionamento tem prioridade
+        if getattr(veiculo, 'viagem_reposicionamento', None) and veiculo.viagem_reposicionamento.viagem_ativa:
+            return veiculo.viagem_reposicionamento
+
+        # Recarga tem prioridade a seguir
+        if getattr(veiculo, 'viagem_recarga', None) and veiculo.viagem_recarga.viagem_ativa:
+            return veiculo.viagem_recarga
+
+        # Caso contrário, usar a primeira viagem de pedido ativa
+        for v in getattr(veiculo, 'viagens', []):
+            if v.viagem_ativa:
+                return v
+
+        return None
 
     def _desenhar_legenda(self):
         """Desenha a legenda do grafo."""
@@ -642,7 +673,7 @@ class DisplayGrafico(DisplayBase):
             # Remover texto antigo se existir
             if self.stats_text_obj:
                 self.stats_text_obj.remove()
-            
+
             bbox_stats = {
                 'boxstyle': 'round,pad=0.8',
                 'facecolor': 'white',
@@ -688,9 +719,9 @@ class DisplayGrafico(DisplayBase):
 
     def mostrar_metricas_finais(self):
         """Mostra as métricas finais da simulação."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("📊 MÉTRICAS FINAIS DA SIMULAÇÃO")
-        print("="*80)
+        print("=" * 80)
 
         if self.metricas:
             print(f"Pedidos Atendidos: {self.metricas.pedidos_atendidos}")
@@ -705,4 +736,4 @@ class DisplayGrafico(DisplayBase):
                 taxa_sucesso = (self.metricas.pedidos_atendidos / total_pedidos) * 100
                 print(f"Taxa de Sucesso: {taxa_sucesso:.1f}%")
 
-        print("="*80)
+        print("=" * 80)

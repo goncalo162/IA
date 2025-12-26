@@ -90,7 +90,8 @@ class NavegadorCustoUniforme(NavegadorBase):
     Usa apenas custos reais das arestas (sem heurística).
     """
 
-    def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+    def calcular_rota(self, grafo: Grafo, origem: str, destino: str,
+                      veiculo: Optional[object] = None) -> Optional[List[str]]:
         if origem == destino:
             return [origem]
 
@@ -152,7 +153,8 @@ class NavegadorAEstrela(NavegadorBase):
     def nome_algoritmo(self) -> str:
         return "A* Informed"
 
-    def calcular_rota(self, grafo: Grafo, origem: str, destino: str, veiculo: Optional[object] = None) -> Optional[List[str]]:
+    def calcular_rota(self, grafo: Grafo, origem: str, destino: str,
+                      veiculo: Optional[object] = None) -> Optional[List[str]]:
         if origem == destino:
             return [origem]
 
@@ -208,7 +210,9 @@ class NavegadorAEstrela(NavegadorBase):
 
         return None  # Sem caminho
 
-#NOTA: REVER ESTE ALGORITMO
+# NOTA: REVER ESTE ALGORITMO
+
+
 class NavegadorBidirecional(NavegadorBase):
     """
     Procura bidirecional: expande simultaneamente a partir da origem e do destino.
