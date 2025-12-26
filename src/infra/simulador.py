@@ -119,9 +119,7 @@ class Simulador:
         self.gestor_viagens.configurar_gestor_recargas(self.gestor_recargas)
         self.gestor_pedidos.configurar_display(self.display)
 
-    def _log(self, mensagem: str):
-        """Escreve mensagem no log."""
-        self.logger.log(mensagem)
+    ##### MÉTODO AUXILIAR DE CARREGAMENTO DE DADOS #####
 
     def carregar_dados(self, caminho_grafo: str, caminho_veiculos: str,
                        caminho_pedidos: str, caminho_eventos_transito: str = None):
@@ -136,39 +134,14 @@ class Simulador:
         num_pedidos_carregados = self.ambiente.carregar_pedidos(caminho_pedidos)
 
         num_eventos_carregados = 0
-        # Carregar eventos de trânsito se o ficheiro for fornecido
+
         if caminho_eventos_transito:
             self._log(f"A carregar eventos de trânsito de {caminho_eventos_transito}...")
             num_eventos_carregados = self.gestor_eventos.carregar_eventos_transito(caminho_eventos_transito)
     
         self.logger.dados_carregados(num_nos_carregados, num_veiculos_carregados, num_pedidos_carregados, num_eventos_carregados)
 
-    def _alterar_transito(self, aresta: str, nivel: str) -> bool:
-        """
-        Altera o nível de trânsito de uma aresta.
-        Callback usado pelo gestor de eventos para manter modularidade.
-        
-        Args:
-            aresta: Nome da aresta a alterar
-            nivel: Nível de trânsito como string (ex: "ELEVADO", "ACIDENTE")
-            
-        Returns:
-            True se alteração bem sucedida, False caso contrário
-        """
-        try:
-            nivel_enum = NivelTransito[nivel]
-            sucesso = self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
-            
-            if sucesso:
-                self._log(f"[TRÂNSITO] Aresta '{aresta}' alterada para {nivel}")
-                # Registar aresta alterada no gestor de rotas
-                self.gestor_rotas.registar_aresta_alterada(aresta)
-                
-            return sucesso
-        except KeyError:
-            self._log(f"[AVISO] Nível de trânsito inválido: {nivel}")
-            return False
-
+    ##### MÉTODO PRINCIPAL DE EXECUÇÃO DA SIMULAÇÃO #####
 
     def executar(self, duracao_horas: float = 8.0):
         """Executa a simulação temporal."""
@@ -199,10 +172,10 @@ class Simulador:
         tempo_decorrido_simulacao = timedelta(0)
 
         while self.tempo_simulacao < tempo_final and self.em_execucao:
-            # 1. Processar eventos agendados e adicionar eventos novos ne necessário
+            # 1. Processar eventos agendados e adicionar eventos novos aleatórios se chances permitirem
             chuveu, novo_pedido = self.simuladorDinamico.simulacaoDinamica(self.ambiente, self.tempo_simulacao)
             if(chuveu == True):
-                self._log("[DIN]Trocou de tempo")
+                self._log("[DIN]Trocou de tempo") 
                 
             if novo_pedido:
                 self._log(f"[DIN] Pedido dinâmico gerado #{novo_pedido.id}")
@@ -218,7 +191,7 @@ class Simulador:
             self.gestor_eventos.processar_eventos_ate(self.tempo_simulacao)
 
             # 2. Recalcular rotas afetadas por eventos (ex: alterações de trânsito)
-            self.gestor_rotas.recalcular_rotas_afetadas(self.gestor_viagens.viagens_ativas)
+            self.gestor_rotas.recalcular_rotas_afetadas(self.gestor_viagens.viagens_ativas) 
 
             # 3. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
             restante = tempo_final - self.tempo_simulacao
@@ -236,16 +209,14 @@ class Simulador:
             except Exception:
                 pass
 
-            # 4. Calcular e aplicar efeitos do passo (atualizar progresso das viagens)
+            # 4. Calcular e aplicar efeitos do passo (atualizar progresso das viagens e recargas)
             tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
             
-            # Atualizar viagens usando o gestor de viagens
             veiculos_chegaram_posto = self.gestor_viagens.atualizar_viagens_ativas(
                 tempo_passo_horas, self.tempo_simulacao
             )
-            
-            # Processar veículos que chegaram a postos de recarga
-            for veiculo_id, veiculo in veiculos_chegaram_posto:
+
+            for _, veiculo in veiculos_chegaram_posto:
                 self.gestor_recargas.processar_chegada_posto(
                     veiculo, self.tempo_simulacao
                 )
@@ -253,10 +224,11 @@ class Simulador:
             # 5. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
-            # 6. Atualizar display e métricas
+            # 6. Atualizar display 
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(
                     self.tempo_simulacao, self.gestor_viagens.viagens_ativas)
+            
 
             # 7. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
@@ -287,24 +259,27 @@ class Simulador:
         if self.display:
             self.display.finalizar()
 
-    #NOTA: talvez meter isto no logger ou nas metricas?
+    ### MÉTODOS AUXILIARES DE EXPORTAÇÃO DE ESTATISTICAS E LOGGING ###
+
+    def _log(self, mensagem: str):
+        """Escreve mensagem no log."""
+        self.logger.log(mensagem)
+
     def _exportar_estatisticas(self):
-        """Exporta as métricas para CSV cumulativo."""
-        project_root = os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))))
-        csv_ficheiro = os.path.join(
-            project_root, 'runs', 'stats', 'statistics.csv')
+        """Exporta as métricas para CSV cumulativo (delegado para `Metricas`)."""
 
         config = {
             'navegador': self.navegador.nome_algoritmo(),
-            'alocador': self.alocador.__class__.__name__,
+            'alocador': self.alocador.nome_algoritmo(),
             'velocidade': self.velocidade_simulacao
         }
 
-        self.metricas.exportar_csv(csv_ficheiro, config)
+        csv_ficheiro = self.metricas.exportar_csv(None, config)
 
         self._log(f"\n Estatísticas exportadas para: {csv_ficheiro}")
         self._log(f" Log da simulação guardado em: {self.logger.get_caminho_log()}")
+     
+    ### MÉTODOS AUXILIARES DE AGENDAMENTO DE EVENTOS ###
 
     def _agendar_pedidos(self):
         """Agenda todos os pedidos para chegarem no horário pretendido."""
@@ -329,6 +304,35 @@ class Simulador:
             callback_alterar_transito=self._alterar_transito
         )
         self._log(f"Agendando {num_eventos} eventos de trânsito...")
+
+    ### MÉTODOS AUXILIARES PARA CALLBACKS DE EVENTOS ###
+            
+    def _alterar_transito(self, aresta: str, nivel: str) -> bool:
+        """
+        Altera o nível de trânsito de uma aresta.
+        Callback usado pelo gestor de eventos para manter modularidade.
+        
+        Args:
+            aresta: Nome da aresta a alterar
+            nivel: Nível de trânsito como string (ex: "ELEVADO", "ACIDENTE")
+            
+        Returns:
+            True se alteração bem sucedida, False caso contrário
+        """
+        try:
+            nivel_enum = NivelTransito[nivel]
+            sucesso = self.ambiente.grafo.alterarTransitoAresta(aresta, nivel_enum)
+            
+            if sucesso:
+                self._log(f"[TRÂNSITO] Aresta '{aresta}' alterada para {nivel}")
+                # Registar aresta alterada no gestor de rotas
+                self.gestor_rotas.registar_aresta_alterada(aresta)
+                
+            return sucesso
+        except KeyError:
+            self._log(f"[AVISO] Nível de trânsito inválido: {nivel}")
+            return False
+
     
     def _processar_pedido(self, pedido):
         """

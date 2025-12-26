@@ -349,14 +349,24 @@ class Metricas:
             'historico_recargas': self.historico_recargas
         }
 
-    def exportar_csv(self, ficheiro_csv: str, config: Dict):
+    def exportar_csv(self, ficheiro_csv: str = None, config: Dict = None) -> str:
         """
         Exporta as métricas para CSV, fazendo append se o ficheiro já existir.
 
         Args:
-            ficheiro_csv: Caminho para o ficheiro CSV de estatísticas
+            ficheiro_csv: Caminho para o ficheiro CSV de estatísticas. Se None,
+                usa o caminho por omissão em 'runs/stats/statistics.csv'.
             config: Dicionário com configuração da run (algoritmo, velocidade, etc.)
+
+        Returns:
+            O caminho absoluto para o ficheiro CSV utilizado.
         """
+        # Determinar ficheiro por omissão se não for fornecido
+        if ficheiro_csv is None:
+            project_root = os.path.dirname(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))))
+            ficheiro_csv = os.path.join(project_root, 'runs', 'stats', 'statistics.csv')
+
         # Criar diretório se não existir
         os.makedirs(os.path.dirname(ficheiro_csv), exist_ok=True)
 
@@ -406,3 +416,5 @@ class Metricas:
                 writer.writeheader()
 
             writer.writerow(dados)
+
+        return os.path.abspath(ficheiro_csv)

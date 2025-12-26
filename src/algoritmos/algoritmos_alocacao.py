@@ -70,6 +70,9 @@ class AlocadorSimples(AlocadorBase):
 
         return None
 
+    def nome_algoritmo(self):
+        return "Simples"
+
 
 ####################
 #   *Heuristico*   #
@@ -171,6 +174,9 @@ class AlocadorHeuristico(AlocadorBase):
 
         return melhor_veiculo
 
+    def nome_algoritmo(self):
+        return "Heurístico"
+
 #TODO: REVER ESTES ALGORITMOS
 
 class AlocadorPorCusto(AlocadorBase):
@@ -217,6 +223,8 @@ class AlocadorPorCusto(AlocadorBase):
 
         return melhor
 
+    def nome_algoritmo(self):
+        return "PorCusto"
 
 class AlocadorAEstrela(AlocadorBase):
     """Alocador que aplica uma heurística (A*-like) para escolher veículo.
@@ -265,3 +273,6 @@ class AlocadorAEstrela(AlocadorBase):
         melhor_veiculo.rota_ate_cliente = rota
         melhor_veiculo.distancia_ate_cliente = dist_cli
         return melhor_veiculo
+
+    def nome_algoritmo(self):
+        return "A-Estrela"
