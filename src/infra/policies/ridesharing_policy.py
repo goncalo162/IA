@@ -9,7 +9,7 @@ class RideSharingPolicy(ABC):
     """Classe abstrata para políticas de ride-sharing."""
 
     @abstractmethod
-    def nome_policy(self) -> str:
+    def nome_politica(self) -> str:
         """Retorna o nome da política de ride-sharing."""
         pass
 
@@ -45,7 +45,7 @@ class SimplesRideSharingPolicy(RideSharingPolicy):
     com o plano atual do veículo e depois estender até ao destino do pedido.
     """
 
-    def nome_policy(self):
+    def nome_politica(self):
         return "SimplesRideSharingPolicy"
 
     def permite_ridesharing(self) -> bool:
@@ -107,7 +107,7 @@ class SemRideSharingPolicy(RideSharingPolicy):
     Cada veículo só pode ter uma viagem ativa por vez.
     """
 
-    def nome_policy(self):
+    def nome_politica(self):
         return "SemRideSharingPolicy"
 
     def permite_ridesharing(self) -> bool:

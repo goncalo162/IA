@@ -111,6 +111,24 @@ class ViagemRecarga(ViagemBase):
             return self.destino_posto
         return self.segmentos[self.indice_segmento_atual]['origem']
 
+class ViagemReposicionamento(ViagemBase):
+    """Viagem vazia usada para reposicionamento proativo (sem pedido)."""
+
+    def __init__(self, rota: List[str], distancia_total: float, tempo_inicio, grafo,
+                 velocidade_media: float = 50.0):
+
+        super().__init__(rota, distancia_total, tempo_inicio, grafo, velocidade_media)
+
+    @property
+    def destino(self):
+        return self.rota[-1] if self.rota else None
+
+    @property
+    def localizacao_atual(self) -> Optional[str]:
+        if self.indice_segmento_atual >= len(self.segmentos):
+            return self.destino
+        return self.segmentos[self.indice_segmento_atual]['origem']
+
 
 class Viagem(ViagemBase):
     """Representa uma viagem em progresso.

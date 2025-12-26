@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
-from infra.entidades.viagem import Viagem, ViagemRecarga
+from infra.entidades.viagem import Viagem, ViagemRecarga, ViagemReposicionamento
 from infra.entidades.recarga import PlanoRecarga
 from infra.grafo.node import TipoNodo
 
@@ -269,6 +269,33 @@ class Veiculo(ABC):
             value) if value is not None else 0.0
 
     # -------------------- métodos auxiliares para as suas viagens --------------------
+
+    def iniciar_viagem_reposicionamento(self, rota: list, distancia: float, tempo_simulacao, grafo) -> bool:
+        """
+        Inicia uma viagem de reposicionamento vazia.
+
+        Args:
+            rota: Rota calculada para o reposicionamento
+            distancia: Distância total da rota (km)
+            tempo_simulacao: Tempo atual da simulação
+
+        Returns:
+            True se a viagem foi iniciada com sucesso
+        """
+        # Criar viagem de reposicionamento (sem pedido associado)
+        viagem = ViagemReposicionamento(
+            rota=rota,
+            distancia_total=distancia,
+            tempo_inicio=tempo_simulacao,
+            grafo=grafo
+        )
+
+        # Adicionar viagem ao veículo e mudar estado
+        self.viagens.append(viagem)
+        self.estado = EstadoVeiculo.EM_ANDAMENTO
+
+        return True
+    
 
     def iniciar_viagem(self, pedido,
                        rota_ate_cliente: list,

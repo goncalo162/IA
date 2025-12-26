@@ -12,7 +12,7 @@ class RecargaPolicy(ABC):
     """Classe abstrata para políticas de recarga."""
 
     @abstractmethod
-    def nome_policy(self) -> str:
+    def nome_politica(self) -> str:
         """Retorna o nome da política de recarga."""
         pass
 
@@ -145,7 +145,7 @@ class RecargaAutomaticaPolicy(RecargaPolicy):
     direcionados para postos de abastecimento.
     """
 
-    def nome_policy(self) -> str:
+    def nome_politica(self) -> str:
         return "RecargaAutomaticaPolicy"
 
     def permite_recarga(self) -> bool:
@@ -198,7 +198,7 @@ class SemRecargaPolicy(RecargaPolicy):
     ou ficam indisponíveis quando a autonomia acaba.
     """
 
-    def nome_policy(self) -> str:
+    def nome_politica(self) -> str:
         return "SemRecargaPolicy"
 
     def permite_recarga(self) -> bool:
@@ -227,7 +227,7 @@ class RecargaDuranteViagemPolicy(RecargaPolicy):
     Apenas aceita postos que estejam na rota planejada (sem desvios).
     """
 
-    def nome_policy(self) -> str:
+    def nome_politica(self) -> str:
         return "RecargaDuranteViagemPolicy"
 
     def permite_recarga(self) -> bool:

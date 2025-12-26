@@ -6,7 +6,11 @@ from infra.policies import (
     RideSharingPolicy, SimplesRideSharingPolicy,
     RecargaPolicy, RecargaAutomaticaPolicy
 )
+from infra.policies.reposicionamento_policy import (
+    ReposicionamentoPolicy, ReposicionamentoNulo, ReposicionamentoEstatistico
+)
 from infra.gestores import GestorPedidos, GestorViagens, GestorRecargas, GestorRotas
+from infra.gestores.gestor_reposicionamento import GestorReposicionamento
 from infra.grafo.aresta import NivelTransito
 from infra.evento import GestorEventos, TipoEvento
 from infra.metricas import Metricas
@@ -41,7 +45,8 @@ class Simulador:
                  frequencia_calculo: float = 10.0,
                  velocidade_simulacao: float = 1.0,
                  ridesharing_policy: Optional[RideSharingPolicy] = None,
-                 recarga_policy: Optional[RecargaPolicy] = None):
+                 recarga_policy: Optional[RecargaPolicy] = None,
+                 reposicionamento_policy: Optional[ReposicionamentoPolicy] = None):
         """
         Inicializa o simulador com os componentes necessários.
 
@@ -54,6 +59,7 @@ class Simulador:
             velocidade_simulacao: Multiplicador de velocidade
             ridesharing_policy: Política de ride-sharing (padrão: SimplesRideSharingPolicy)
             recarga_policy: Política de recarga (padrão: RecargaAutomaticaPolicy)
+            reposicionamento_policy: Política de reposicionamento (padrão: ReposicionamentoNulo)
         """
         self.alocador = alocador
         self.navegador = navegador
@@ -112,12 +118,21 @@ class Simulador:
             logger=self.logger
         )
 
+        self.gestor_reposicionamento = GestorReposicionamento(
+            ambiente=self.ambiente,
+            navegador=self.navegador,
+            metricas=self.metricas,
+            logger=self.logger,
+            reposicionamento_policy=reposicionamento_policy or ReposicionamentoNulo()
+        )
+
         # Configurar coordenação entre gestores
         self.gestor_recargas.configurar_callbacks(
             adicionar_viagem_fn=self.gestor_viagens.adicionar_viagem,
             remover_viagem_fn=self.gestor_viagens.remover_viagem
         )
         self.gestor_viagens.configurar_gestor_recargas(self.gestor_recargas)
+        self.gestor_reposicionamento.configurar_agendador(self.gestor_viagens.adicionar_viagem)
         self.gestor_pedidos.configurar_display(self.display)
 
         if self.alocador is not None:
@@ -204,7 +219,12 @@ class Simulador:
             # 2. Recalcular rotas afetadas por eventos (ex: alterações de trânsito)
             self.gestor_rotas.recalcular_rotas_afetadas(self.gestor_viagens.viagens_ativas)
 
-            # 3. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
+            # 3. Planear reposicionamentos proativos (se política permitir)
+            num_reposicionados = self.gestor_reposicionamento.planear_reposicionamentos(
+                tempo_simulacao=self.tempo_simulacao
+            )
+
+            # 4. Determinar passo do ciclo (limitado pelo passo padrão e pelo tempo restante)
             restante = tempo_final - self.tempo_simulacao
             passo_atual = self.passo_tempo if self.passo_tempo <= restante else restante
 
@@ -220,7 +240,7 @@ class Simulador:
             except Exception:
                 pass
 
-            # 4. Calcular e aplicar efeitos do passo (atualizar progresso das viagens e recargas)
+            # 5. Calcular e aplicar efeitos do passo (atualizar progresso das viagens e recargas)
             tempo_passo_horas = passo_atual.total_seconds() / 3600 if passo_atual.total_seconds() > 0 else 0
 
             veiculos_chegaram_posto = self.gestor_viagens.atualizar_viagens_ativas(
@@ -232,15 +252,15 @@ class Simulador:
                     veiculo, self.tempo_simulacao
                 )
 
-            # 5. Atualizar eventos dinâmicos
+            # 6. Atualizar eventos dinâmicos
             self.gestor_eventos.atualizar(self.tempo_simulacao)
 
-            # 6. Atualizar display
+            # 7. Atualizar display
             if self.display and hasattr(self.display, 'atualizar_tempo_simulacao'):
                 self.display.atualizar_tempo_simulacao(
                     self.tempo_simulacao, self.gestor_viagens.viagens_ativas)
 
-            # 7. Sincronizar com tempo real (apenas para velocidades moderadas)
+            # 8. Sincronizar com tempo real (apenas para velocidades moderadas)
             if self.velocidade_simulacao <= VELOCIDADE_MAXIMA_SINCRONIZADA:
                 tempo_decorrido_simulacao += passo_atual
                 tempo_esperado_real = tempo_decorrido_simulacao.total_seconds() / \
@@ -251,7 +271,7 @@ class Simulador:
                 if tempo_espera > 0:
                     time.sleep(tempo_espera)
 
-            # 8. Finalmente, avançar o relógio de simulação (usar passo_atual)
+            # 9. Finalmente, avançar o relógio de simulação (usar passo_atual)
             self.tempo_simulacao += passo_atual
 
         # Finalizar simulação
@@ -281,10 +301,11 @@ class Simulador:
             'navegador': self.navegador.nome_algoritmo(),
             'alocador': self.alocador.nome_algoritmo(),
             'velocidade': self.velocidade_simulacao,
-            'recarga_policy': self.gestor_recargas.recarga_policy.nome_policy(),
+            'recarga_policy': self.gestor_recargas.recarga_policy.nome_politica(),
             'recarga_permitida': self.gestor_recargas.recarga_policy.permite_recarga(),
-            'ridesharing_policy': self.gestor_pedidos.ridesharing_policy.nome_policy(),
-            'ridesharing_permitida': self.gestor_pedidos.ridesharing_policy.permite_ridesharing()
+            'ridesharing_policy': self.gestor_pedidos.ridesharing_policy.nome_politica(),
+            'ridesharing_permitida': self.gestor_pedidos.ridesharing_policy.permite_ridesharing(),
+            'reposicionamento_policy': self.gestor_reposicionamento.reposicionamento_policy.nome_politica()
         }
 
         csv_ficheiro = self.metricas.exportar_csv(None, config)

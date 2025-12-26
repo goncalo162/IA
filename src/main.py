@@ -26,6 +26,7 @@ def main():
     alocador = Config.get_alocador(navegador, config['algoritmo_alocacao'])
     ride_sharing_policy = Config.get_ride_sharing_policy()
     recarga_policy = Config.get_recarga_policy()
+    reposicionamento_policy = Config.get_reposicionamento_policy()
 
     # Criar simulador
     tempo_inicial = datetime(2025, 1, 1, 8, 0, 0)
@@ -37,7 +38,8 @@ def main():
         frequencia_calculo=Config.FREQUENCIA_CALCULO,
         velocidade_simulacao=config['velocidade_display'],
         ridesharing_policy=ride_sharing_policy,
-        recarga_policy=recarga_policy
+        recarga_policy=recarga_policy,
+        reposicionamento_policy=reposicionamento_policy
     )
 
     if display is not None:

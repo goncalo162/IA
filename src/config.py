@@ -6,6 +6,7 @@ from typing import Optional
 from infra.policies.recarga_policy import RecargaAutomaticaPolicy, SemRecargaPolicy, RecargaDuranteViagemPolicy
 from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme, NavegadorDFS
 from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples, AlocadorPorCusto, AlocadorAEstrela
+from infra.policies.reposicionamento_policy import ReposicionamentoAtratividade, ReposicionamentoEstatistico, ReposicionamentoNulo
 from infra.policies.ridesharing_policy import SimplesRideSharingPolicy, SemRideSharingPolicy
 from algoritmos.criterios import CustoDefault, CustoTempoPercurso
 from algoritmos.criterios import ZeroHeuristica, HeuristicaEuclidiana
@@ -49,6 +50,9 @@ class Config:
 
     # Políticas de Recarga
     POLITICA_RECARGA = os.getenv('POLITICA_RECARGA', 'automatica')
+
+    # Politica de Reposicionamento
+    POLITICA_REPOSICIONAMENTO = os.getenv('POLITICA_REPOSICIONAMENTO', 'nulo')
 
     # Penalização aplicada ao custo total por cada pedido rejeitado
     PENALIDADE_PEDIDO_REJEITADO = float(os.getenv('PENALIDADE_PEDIDO_REJEITADO', '100.0'))
@@ -201,10 +205,10 @@ class Config:
             'sem': SemRideSharingPolicy,
         }
 
-        nome_policy = os.getenv('POLITICA_RIDE_SHARING', 'simples')
-        policy_class = policies.get(nome_policy.lower())
+        nome_politica = os.getenv('POLITICA_RIDE_SHARING', 'simples')
+        policy_class = policies[nome_politica.lower()]
         if policy_class is None:
-            print(f"Política de ride-sharing inválida: '{nome_policy}'")
+            print(f"Política de ride-sharing inválida: '{nome_politica}'")
             print(f"Use: {', '.join(policies.keys())}")
             sys.exit(1)
 
@@ -220,10 +224,30 @@ class Config:
             'sem': SemRecargaPolicy,
         }
 
-        nome_policy = os.getenv('POLITICA_RECARGA', 'automatica')
-        policy_class = policies.get(nome_policy.lower())
+        nome_politica = os.getenv('POLITICA_RECARGA', 'automatica')
+        policy_class = policies[nome_politica.lower()]
         if policy_class is None:
-            print(f"Política de recarga inválida: '{nome_policy}'")
+            print(f"Política de recarga inválida: '{nome_politica}'")
+            print(f"Use: {', '.join(policies.keys())}")
+            sys.exit(1)
+
+        return policy_class()
+
+
+    @classmethod
+    def get_reposicionamento_policy(self):
+        """Retorna a política de reposicionamento configurada."""
+
+        policies = {
+            'nulo': ReposicionamentoNulo,
+            'atratividade': ReposicionamentoAtratividade,
+             'estatistico': ReposicionamentoEstatistico,  
+        }
+
+        nome_politica = os.getenv('POLITICA_REPOSICIONAMENTO', 'nulo')
+        policy_class = policies[nome_politica.lower()]
+        if policy_class is None:
+            print(f"Política de reposicionamento inválida: '{nome_politica}'")
             print(f"Use: {', '.join(policies.keys())}")
             sys.exit(1)
 

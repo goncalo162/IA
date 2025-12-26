@@ -101,6 +101,15 @@ class GestorViagens:
         """
         pedido_id = viagem.pedido_id
 
+        # Se é viagem de reposicionamento (sem pedido), apenas registar conclusão
+        if pedido_id is None:
+            log_msg = (
+                f"[magenta]↻[/] Reposicionamento concluído: "
+                f"Veículo {veiculo.id_veiculo} chegou a {veiculo.localizacao_atual}"
+            )
+            self.logger.log(log_msg)
+            return
+
         # Marcar pedido como concluído no ambiente
         self.ambiente.concluir_pedido(pedido_id, viagem)
 

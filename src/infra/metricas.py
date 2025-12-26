@@ -50,11 +50,17 @@ class Metricas:
         self.pedidos_rejeitados_sem_recarga: int = 0
         self.veiculos_alocados_com_recarga_planejada: int = 0  # Veículos alocados que precisarão recarregar
 
+        # Métricas de reposicionamento proativo
+        self.reposicionamentos_totais: int = 0  # Total de reposicionamentos executados
+        self.distancia_reposicionamento_total: float = 0.0  # Distância total percorrida vazia (km)
+        self.reposicionamentos_por_veiculo: Dict[int, int] = {}  # Contagem por veículo
+
         # Histórico detalhado
         self.historico_pedidos: List[Dict] = []
         self.historico_veiculos: List[Dict] = []
         self.historico_recalculos: List[Dict] = []  # Histórico de recálculos
         self.historico_recargas: List[Dict] = []  # Histórico de recargas
+        self.historico_reposicionamentos: List[Dict] = []  # Histórico de reposicionamentos
 
     def registar_pedido_atendido(self, pedido_id: int, veiculo_id: int,
                                  tempo_resposta: float, distancia: float,
@@ -132,6 +138,30 @@ class Metricas:
     def registar_tempo_disponivel(self, veiculo_id: int, minutos: float):
         """Regista tempo em que um veículo esteve disponível."""
         self.tempo_disponivel_total += minutos
+
+    def registar_reposicionamento(self, veiculo_id: int, origem: str, destino: str, distancia: float):
+        """Regista um reposicionamento proativo de veículo.
+
+        Args:
+            veiculo_id: ID do veículo reposicionado
+            origem: Nodo de origem
+            destino: Nodo de destino
+            distancia: Distância percorrida vazia (km)
+        """
+        self.reposicionamentos_totais += 1
+        self.distancia_reposicionamento_total += distancia
+        
+        if veiculo_id not in self.reposicionamentos_por_veiculo:
+            self.reposicionamentos_por_veiculo[veiculo_id] = 0
+        self.reposicionamentos_por_veiculo[veiculo_id] += 1
+
+        self.historico_reposicionamentos.append({
+            'veiculo_id': veiculo_id,
+            'origem': origem,
+            'destino': destino,
+            'distancia': distancia,
+            'timestamp': datetime.now()
+        })
 
     def registar_recalculo_rota(self, pedido_id: int, veiculo_id: int,
                                 diferenca_tempo: float, motivo: str = "transito",
@@ -347,6 +377,13 @@ class Metricas:
         relatorio.append(f"% tempo em recarga: {self.percentual_tempo_em_recarga():.2f}%")
         if self.recargas_por_veiculo:
             relatorio.append(f"Veículos que recarregaram: {len(self.recargas_por_veiculo)}")
+        relatorio.append("")
+        relatorio.append("--- MÉTRICAS DE REPOSICIONAMENTO PROATIVO ---")
+        relatorio.append(f"Total de reposicionamentos: {self.reposicionamentos_totais}")
+        relatorio.append(f"Distância total em reposicionamentos: {self.distancia_reposicionamento_total:.2f} km")
+        relatorio.append(f"Veículos que reposicionaram: {len(self.reposicionamentos_por_veiculo)}")
+        if self.reposicionamentos_por_veiculo:
+            relatorio.append(f"Reposicionamentos por veículo: {self.reposicionamentos_por_veiculo}")
         relatorio.append("=" * 60)
 
         return "\n".join(relatorio)
@@ -390,6 +427,13 @@ class Metricas:
                 'veiculos_recarregados': len(self.recargas_por_veiculo),
                 'recargas_por_veiculo': self.recargas_por_veiculo
             },
+            'reposicionamentos': {
+                'total_reposicionamentos': self.reposicionamentos_totais,
+                'distancia_total_km': self.distancia_reposicionamento_total,
+                'veiculos_reposicionaram': len(self.reposicionamentos_por_veiculo),
+                'reposicionamentos_por_veiculo': self.reposicionamentos_por_veiculo,
+                'historico_reposicionamentos': self.historico_reposicionamentos
+            },
             'historico_pedidos': self.historico_pedidos,
             'historico_veiculos': self.historico_veiculos,
             'historico_recalculos': self.historico_recalculos,
@@ -431,6 +475,7 @@ class Metricas:
             'recarga_permitida': config.get('recarga_permitida', False),
             'ridesharing_policy': config.get('ridesharing_policy', ''),
             'ridesharing_permitida': config.get('ridesharing_permitida', False),
+            'reposicionamento_policy': config.get('reposicionamento_policy', ''),
             'pedidos_atendidos': self.pedidos_atendidos,
             'pedidos_rejeitados': self.pedidos_rejeitados,
             'taxa_atendimento': round(self.taxa_atendimento(), 2),
@@ -461,6 +506,11 @@ class Metricas:
             'pedidos_rejeitados_sem_recarga': self.pedidos_rejeitados_sem_recarga,
             'veiculos_alocados_com_recarga_planejada': self.veiculos_alocados_com_recarga_planejada,
             'veiculos_sem_autonomia': self.veiculos_sem_autonomia
+            ,
+            # Reposicionamentos
+            'reposicionamentos_totais': self.reposicionamentos_totais,
+            'distancia_reposicionamento_total': round(self.distancia_reposicionamento_total, 2),
+            'veiculos_reposicionaram': len(self.reposicionamentos_por_veiculo)
         }
 
         # Escrever no CSV
