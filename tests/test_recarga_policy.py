@@ -25,18 +25,18 @@ def make_low_fuel_vehicle():
 def make_simple_grafo():
     """Cria um grafo simples para testes."""
     grafo = Grafo()
-    
+
     # Criar nós e arestas (add_edge adiciona nós automaticamente)
     node_a = Node("A", 0, 0)
     node_b = Node("B", 10, 0)
     node_c = Node("C", 20, 0)
-    
+
     aresta_ab = Aresta(10.0, 50.0, "A-B", NivelTransito.NORMAL)
     aresta_bc = Aresta(10.0, 50.0, "B-C", NivelTransito.NORMAL)
-    
+
     grafo.add_edge(node_a, node_b, aresta_ab)
     grafo.add_edge(node_b, node_c, aresta_bc)
-    
+
     return grafo
 
 
@@ -50,7 +50,7 @@ def make_viagem(grafo, distancia_total=100.0, distancia_percorrida=0.0):
         horario_pretendido=datetime.now(),
         prioridade=1
     )
-    
+
     viagem = Viagem(
         pedido=pedido,
         rota_ate_cliente=["A"],
@@ -60,18 +60,18 @@ def make_viagem(grafo, distancia_total=100.0, distancia_percorrida=0.0):
         tempo_inicio=datetime.now(),
         grafo=grafo
     )
-    
+
     # Ajustar distâncias manualmente para controlar testes
     viagem.distancia_total = distancia_total
     viagem.distancia_percorrida = distancia_percorrida
-    
+
     return viagem
 
 
 def test_automatica_policy_blocks_with_viagem_ativa():
     grafo = make_simple_grafo()
     ve = make_low_fuel_vehicle()
-    
+
     # Adicionar viagem ativa real
     viagem = make_viagem(grafo)
     ve.viagens.append(viagem)
@@ -83,7 +83,7 @@ def test_automatica_policy_blocks_with_viagem_ativa():
 def test_durante_viagem_policy_allows_with_viagem_ativa():
     grafo = make_simple_grafo()
     ve = make_low_fuel_vehicle()
-    
+
     # Viagem com pouca distância restante (5 km)
     viagem = make_viagem(grafo, distancia_total=10.0, distancia_percorrida=5.0)
     ve.viagens.append(viagem)
@@ -117,7 +117,7 @@ def test_config_returns_durante_viagem_policy():
 
 def test_durante_viagem_policy_schedules_when_autonomia_insuficiente_for_remaining():
     grafo = make_simple_grafo()
-    
+
     # Veículo com autonomia suficiente para critério, mas insuficiente para viagem ativa
     ve = VeiculoCombustao(
         id_veiculo="V200",
@@ -137,7 +137,7 @@ def test_durante_viagem_policy_schedules_when_autonomia_insuficiente_for_remaini
 
 def test_durante_viagem_policy_does_not_schedule_when_autonomia_suficiente():
     grafo = make_simple_grafo()
-    
+
     ve = VeiculoCombustao(
         id_veiculo="V201",
         autonomia_maxima=200,
@@ -156,7 +156,7 @@ def test_durante_viagem_policy_does_not_schedule_when_autonomia_suficiente():
 
 def test_durante_viagem_policy_uses_only_last_active_trip():
     grafo = make_simple_grafo()
-    
+
     # Autonomia 60 km; last trip has 50 km remaining -> with margem 10 => 60 required
     ve = VeiculoCombustao(
         id_veiculo="V300",
@@ -169,7 +169,7 @@ def test_durante_viagem_policy_uses_only_last_active_trip():
     # Primeira viagem: 100 km restantes
     viagem1 = make_viagem(grafo, distancia_total=100.0, distancia_percorrida=0.0)
     ve.viagens.append(viagem1)
-    
+
     # Segunda viagem (continuação): 50 km restantes (deve ser usada)
     viagem2 = make_viagem(grafo, distancia_total=50.0, distancia_percorrida=0.0)
     ve.viagens.append(viagem2)

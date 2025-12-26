@@ -5,13 +5,16 @@ from infra.entidades.veiculos import VeiculoCombustao, EstadoVeiculo
 from infra.entidades.pedidos import Pedido
 from infra.entidades.viagem import Viagem
 
+
 class DummyGrafo:
     def getEdge(self, origem, destino):
         class E:
             def getQuilometro(self):
                 return 1.0
+
             def getVelocidadeMaxima(self):
                 return 50.0
+
             def getTransito(self):
                 class T:
                     value = 1.0
@@ -59,50 +62,49 @@ def new_vehicle():
 
 def test_single_trip_returns_remaining_route():
     v = new_vehicle()
-    trip = build_viagem(['A','B'], ['B','C','D'])
+    trip = build_viagem(['A', 'B'], ['B', 'C', 'D'])
     v.viagens.append(trip)
     v.estado = EstadoVeiculo.EM_ANDAMENTO
 
     # indice_segmento_atual=0 -> rota_restante = ['A','B','C','D']
-    expected = ['A','B','C','D']
+    expected = ['A', 'B', 'C', 'D']
     assert v.rota_total_viagens() == expected
 
 
 def test_two_trips_simple_boundary_duplication_removed():
     v = new_vehicle()
     # Viagem 1 restante: ['A','B','C']
-    t1 = build_viagem([], ['A','B','C'])
+    t1 = build_viagem([], ['A', 'B', 'C'])
     # Viagem 2 restante: ['C','D','E'] (primeiro nó igual ao último de t1)
-    t2 = build_viagem([], ['C','D','E'])
+    t2 = build_viagem([], ['C', 'D', 'E'])
     v.viagens.extend([t1, t2])
     v.estado = EstadoVeiculo.EM_ANDAMENTO
 
-    expected = ['A','B','C','D','E']
+    expected = ['A', 'B', 'C', 'D', 'E']
     assert v.rota_total_viagens() == expected
 
 
 def test_two_trips_no_boundary_overlap():
     v = new_vehicle()
     # Viagem 1 restante: ['A','B','C']
-    t1 = build_viagem([], ['A','B','C'])
+    t1 = build_viagem([], ['A', 'B', 'C'])
     # Viagem 2 restante: ['X','Y'] (não coincide com 'C')
-    t2 = build_viagem([], ['X','Y'])
+    t2 = build_viagem([], ['X', 'Y'])
     v.viagens.extend([t1, t2])
     v.estado = EstadoVeiculo.EM_ANDAMENTO
 
-    expected = ['A','B','C','X','Y']
+    expected = ['A', 'B', 'C', 'X', 'Y']
     assert v.rota_total_viagens() == expected
 
 
 def test_multiple_node_overlap_not_collapsed_in_simple_logic():
     v = new_vehicle()
     # Viagem 1: ['A','B','C','D']
-    t1 = build_viagem([], ['A','B','C','D'])
+    t1 = build_viagem([], ['A', 'B', 'C', 'D'])
     # Viagem 2: ['C','D','E'] -> o algoritmo simples só remove duplicação do primeiro nó
-    t2 = build_viagem([], ['C','D','E'])
+    t2 = build_viagem([], ['C', 'D', 'E'])
     v.viagens.extend([t1, t2])
     v.estado = EstadoVeiculo.EM_ANDAMENTO
 
-    expected = ['A','B','C','D','E']
+    expected = ['A', 'B', 'C', 'D', 'E']
     assert v.rota_total_viagens() == expected
-

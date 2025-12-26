@@ -18,7 +18,10 @@ class NavegadorBase(ABC):
     (BFS, DFS, Dijkstra, A*, etc.).
     """
 
-    def __init__(self, funcao_custo: Optional[FuncaoCusto] = None, heuristica: Optional[Heuristica] = None):
+    def __init__(
+            self,
+            funcao_custo: Optional[FuncaoCusto] = None,
+            heuristica: Optional[Heuristica] = None):
         """Inicializa o navegador com funções de custo e heurística opcionais.
 
         Estas dependências podem ser usadas por implementações (ex.: A*) que

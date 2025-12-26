@@ -4,7 +4,6 @@ from display.aplicacao.graph_viewer import AnimatedGraphApp
 from display.aplicacao.dashboard_window import DashboardWindow
 
 
-
 class DisplayGraficos:
     """
     Launches both the Textual TUI and the graphical Tkinter+Matplotlib viewer.

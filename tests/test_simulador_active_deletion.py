@@ -5,6 +5,7 @@ from infra.simulador import Simulador
 
 class FakeViagem:
     """Viagem fake para testes."""
+
     def __init__(self, pedido_id):
         self.pedido_id = pedido_id
 
@@ -25,7 +26,7 @@ class FakeVeiculo:
     @property
     def viagem_ativa(self):
         return self._active
-    
+
     def precisa_reabastecer(self):
         """Mock method - return False to avoid triggering recharge logic."""
         return False
@@ -50,19 +51,20 @@ class FakeVeiculo:
 
 class FakeAmbiente:
     """Ambiente fake para testes."""
+
     def concluir_pedido(self, pedido_id, viagem):
         pass
-    
+
     def atualizar_viagens_ativas(self, viagens_ativas, tempo_passo_horas):
         # Simular comportamento do ambiente
         viagens_concluidas = []
         veiculos_chegaram_posto = []
-        
+
         for veiculo_id, veiculo in list(viagens_ativas.items()):
             concluidas, chegou_posto = veiculo.atualizar_progresso_viagem(tempo_passo_horas)
             for viagem in concluidas:
                 viagens_concluidas.append((veiculo_id, veiculo, viagem))
-        
+
         return viagens_concluidas, veiculos_chegaram_posto
 
 
@@ -70,7 +72,7 @@ def test_no_deletion_when_still_active():
     s = Simulador(alocador=None, navegador=None, display=None)
     v = FakeVeiculo('V001', concluded_counts=[0])
     s.gestor_viagens.viagens_ativas = {'V001': v}
-    
+
     # Substituir ambiente por fake
     s.ambiente = FakeAmbiente()
     s.gestor_viagens.ambiente = FakeAmbiente()
@@ -87,7 +89,7 @@ def test_deletion_when_all_concluded_single_pass():
     s = Simulador(alocador=None, navegador=None, display=None)
     v = FakeVeiculo('V002', concluded_counts=[1])
     s.gestor_viagens.viagens_ativas = {'V002': v}
-    
+
     # Substituir ambiente por fake
     s.ambiente = FakeAmbiente()
     s.gestor_viagens.ambiente = FakeAmbiente()
@@ -104,7 +106,7 @@ def test_multiple_conclusions_same_step_safe_deletion():
     s = Simulador(alocador=None, navegador=None, display=None)
     v = FakeVeiculo('V005', concluded_counts=[2])
     s.gestor_viagens.viagens_ativas = {'V005': v}
-    
+
     # Substituir ambiente por fake
     s.ambiente = FakeAmbiente()
     s.gestor_viagens.ambiente = FakeAmbiente()

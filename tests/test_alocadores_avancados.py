@@ -37,7 +37,7 @@ def test_alocador_por_custo_prefers_lower_operational_cost():
     pedido = Pedido(1, 'A', 'D', 1, datetime.now())
 
     al = AlocadorPorCusto(nav)
-    escolhido = al.escolher_veiculo(pedido, [v1, v2], g, ['A','B','C','D'], 3.0)
+    escolhido = al.escolher_veiculo(pedido, [v1, v2], g, ['A', 'B', 'C', 'D'], 3.0)
 
     # Apesar de v1 estar mais perto, v2 tem custo operacional muito menor
     assert escolhido is v2
@@ -53,7 +53,7 @@ def test_alocador_aestrela_prefers_best_estimated_cost():
     pedido = Pedido(1, 'A', 'D', 1, datetime.now())
 
     al = AlocadorAEstrela(nav)
-    escolhido = al.escolher_veiculo(pedido, [v1, v2], g, ['A','B','C','D'], 3.0)
+    escolhido = al.escolher_veiculo(pedido, [v1, v2], g, ['A', 'B', 'C', 'D'], 3.0)
 
     # Both vehicles are similar; A* style selection should choose the one with lower g+h
     assert escolhido in (v1, v2)

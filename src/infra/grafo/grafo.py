@@ -82,13 +82,13 @@ class Grafo:
             return random.choice(nodos)
 
         return random.choices(nodos, weights=weights, k=1)[0]
-    
+
     def get_nodes_by_tipo(self, tipo: TipoNodo):
         """Retorna todos os nós de um determinado tipo.
-        
+
         Args:
             tipo: Tipo de nó a procurar (TipoNodo.BOMBA_GASOLINA, TipoNodo.POSTO_CARREGAMENTO, etc.)
-            
+
         Returns:
             Lista de nomes de nós do tipo especificado
         """
@@ -157,7 +157,9 @@ class Grafo:
                 return aresta
         return None
 
-        #nao seria mais facil guardar as arestas num dict com chave o nome da aresta? em vez de percorrer o grafo todo para encontrar a aresta pelo nome
+        # nao seria mais facil guardar as arestas num dict com chave o nome da
+        # aresta? em vez de percorrer o grafo todo para encontrar a aresta pelo
+        # nome
 
     def getEdgeByName(self, nome_aresta: str):
         """
@@ -206,36 +208,40 @@ class Grafo:
                 tempo_segmento = aresta.getTempoPercorrer()
                 if tempo_segmento is None:
                     raise ValueError(
-                        f"Aresta {rota[i]} -> {rota[i+1]} não tem informação de tempo."
+                        f"Aresta {rota[i]} -> {rota[i + 1]} não tem informação de tempo."
                     )
                 tempo_total_horas += tempo_segmento
 
         return tempo_total_horas
-    
-    def encontrar_posto_mais_proximo(self, localizacao_atual: str, tipo_posto: TipoNodo, navegador=None):
+
+    def encontrar_posto_mais_proximo(
+            self,
+            localizacao_atual: str,
+            tipo_posto: TipoNodo,
+            navegador=None):
         """Encontra o posto de abastecimento/recarga mais próximo.
-        
+
         Args:
             localizacao_atual: Nome do nó onde o veículo está
             tipo_posto: Tipo de posto (TipoNodo.BOMBA_GASOLINA ou TipoNodo.POSTO_CARREGAMENTO)
             navegador: Navegador para calcular rotas (se None, usa distância euclidiana aproximada)
-            
+
         Returns:
             Tupla (nome_posto, rota, distancia) ou (None, None, None) se não encontrar
         """
         postos = self.get_nodes_by_tipo(tipo_posto)
-        
+
         if not postos:
             return None, None, None
-        
+
         # Se já estiver num posto do tipo certo, retornar ele mesmo
         if localizacao_atual in postos:
             return localizacao_atual, [localizacao_atual], 0.0
-        
+
         melhor_posto = None
         melhor_rota = None
         menor_distancia = float('inf')
-        
+
         for posto in postos:
             if navegador:
                 # Usar navegador para calcular rota real
@@ -250,16 +256,16 @@ class Grafo:
                 # Aproximação por distância euclidiana (se tiver coordenadas)
                 node_atual = self.get_node_by_name(localizacao_atual)
                 node_posto = self.get_node_by_name(posto)
-                
+
                 if node_atual and node_posto and node_atual.getX() is not None and node_posto.getX() is not None:
                     dx = node_posto.getX() - node_atual.getX()
                     dy = node_posto.getY() - node_atual.getY()
-                    dist = math.sqrt(dx*dx + dy*dy)
+                    dist = math.sqrt(dx * dx + dy * dy)
                     if dist < menor_distancia:
                         menor_distancia = dist
                         melhor_posto = posto
                         melhor_rota = None  # Rota será calculada depois
-        
+
         return melhor_posto, melhor_rota, menor_distancia
 
     ##############################################
@@ -269,11 +275,11 @@ class Grafo:
     def alterarTransitoAresta(self, nome_aresta: str, nivel: NivelTransito) -> bool:
         """
         Altera o nível de trânsito de uma aresta pelo seu nome.
-        
+
         Args:
             nome_aresta: Nome da aresta a alterar (ex: "Rua da Sé")
             nivel: Novo nível de trânsito (NivelTransito enum)
-            
+
         Returns:
             True se a aresta foi encontrada e alterada, False caso contrário.
         """

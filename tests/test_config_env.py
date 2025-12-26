@@ -63,6 +63,7 @@ def test_get_alocador_receives_funcao_e_heuristica():
     assert al.funcao_custo is func
     assert al.heuristica is heur
 
+
 def test_get_new_alocadores_available_and_receive_params():
     func = Config.get_funcao_custo('default')
     heur = Config.get_heuristica('zero')

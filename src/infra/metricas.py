@@ -7,7 +7,8 @@ import csv
 import os
 
 # TODO: rever e expandir com mais métricas conforme necessário
-#TODO rever alguns calculos
+# TODO rever alguns calculos
+
 
 class Metricas:
     """
@@ -36,16 +37,17 @@ class Metricas:
         self.viagens_afetadas_total: int = 0  # Total de viagens afetadas
         self.recalculos_por_transito: int = 0  # Recálculos devido a trânsito
         self.recalculos_por_outros: int = 0  # Recálculos por outros motivos
-        
+
         # Métricas de recarga/abastecimento
         self.recargas_totais: int = 0  # Total de recargas realizadas
         self.tempo_recarga_total: float = 0.0  # Tempo total em recarga (minutos)
         self.autonomia_recarregada_total: float = 0.0  # Autonomia total recarregada (km)
         self.recargas_por_veiculo: Dict[int, int] = {}  # Contagem de recargas por veículo
         self.veiculos_sem_autonomia: int = 0  # Veículos que ficaram sem autonomia
-        
+
         # Métricas de alocação com recarga
-        self.pedidos_rejeitados_sem_recarga: int = 0  # Pedidos rejeitados por falta de autonomia sem plano viável
+        # Pedidos rejeitados por falta de autonomia sem plano viável
+        self.pedidos_rejeitados_sem_recarga: int = 0
         self.veiculos_alocados_com_recarga_planejada: int = 0  # Veículos alocados que precisarão recarregar
 
         # Histórico detalhado
@@ -58,7 +60,7 @@ class Metricas:
                                  tempo_resposta: float, distancia: float,
                                  custo: float, emissoes: float, plano_recarga=None):
         """Regista um pedido que foi atendido com sucesso.
-        
+
         Args:
             pedido_id: ID do pedido
             veiculo_id: ID do veículo alocado
@@ -73,7 +75,7 @@ class Metricas:
         self.distancia_total += distancia
         self.custo_total += custo
         self.emissoes_totais += emissoes
-        
+
         # Registar se foi alocado com plano de recarga
         if plano_recarga and plano_recarga.viavel:
             self.veiculos_alocados_com_recarga_planejada += 1
@@ -87,7 +89,7 @@ class Metricas:
             'emissoes': emissoes,
             'timestamp': datetime.now()
         }
-        
+
         # Adicionar informação do plano de recarga se existir
         if plano_recarga and plano_recarga.viavel:
             historico_entry['plano_recarga'] = {
@@ -97,7 +99,7 @@ class Metricas:
                 'custo_extra': plano_recarga.custo_extra_estimado,
                 'desvio_km': plano_recarga.desvio_rota_km
             }
-        
+
         self.historico_pedidos.append(historico_entry)
 
     def registar_pedido_rejeitado(self, pedido_id: int, motivo: str, penalidade: float = 0.0):
@@ -131,12 +133,12 @@ class Metricas:
         """Regista tempo em que um veículo esteve disponível."""
         self.tempo_disponivel_total += minutos
 
-    def registar_recalculo_rota(self, pedido_id: int, veiculo_id: int, 
+    def registar_recalculo_rota(self, pedido_id: int, veiculo_id: int,
                                 diferenca_tempo: float, motivo: str = "transito",
-                                distancia_anterior: float = 0.0, 
+                                distancia_anterior: float = 0.0,
                                 distancia_nova: float = 0.0):
         """Regista um recálculo de rota.
-        
+
         Args:
             pedido_id: ID do pedido/viagem recalculado
             veiculo_id: ID do veículo
@@ -146,17 +148,17 @@ class Metricas:
             distancia_nova: Distância da nova rota em km
         """
         self.recalculos_totais += 1
-        
+
         if diferenca_tempo > 0:
             self.tempo_perdido_recalculo += diferenca_tempo
         else:
             self.tempo_ganho_recalculo += abs(diferenca_tempo)
-        
+
         if motivo == "transito":
             self.recalculos_por_transito += 1
         else:
             self.recalculos_por_outros += 1
-        
+
         self.historico_recalculos.append({
             'pedido_id': pedido_id,
             'veiculo_id': veiculo_id,
@@ -170,17 +172,17 @@ class Metricas:
 
     def registar_evento_recalculo(self, num_viagens_afetadas: int):
         """Regista um evento que causou recálculo de rotas.
-        
+
         Args:
             num_viagens_afetadas: Número de viagens afetadas pelo evento
         """
         self.eventos_recalculo += 1
         self.viagens_afetadas_total += num_viagens_afetadas
-    
-    def registar_recarga(self, veiculo_id: int, tempo_recarga: float, 
-                        autonomia_recarregada: float, localizacao: str = None):
+
+    def registar_recarga(self, veiculo_id: int, tempo_recarga: float,
+                         autonomia_recarregada: float, localizacao: str = None):
         """Regista uma recarga/abastecimento de veículo.
-        
+
         Args:
             veiculo_id: ID do veículo recarregado
             tempo_recarga: Tempo gasto em recarga (minutos)
@@ -190,12 +192,12 @@ class Metricas:
         self.recargas_totais += 1
         self.tempo_recarga_total += tempo_recarga
         self.autonomia_recarregada_total += autonomia_recarregada
-        
+
         # Incrementar contador por veículo
         if veiculo_id not in self.recargas_por_veiculo:
             self.recargas_por_veiculo[veiculo_id] = 0
         self.recargas_por_veiculo[veiculo_id] += 1
-        
+
         self.historico_recargas.append({
             'veiculo_id': veiculo_id,
             'tempo_recarga_min': tempo_recarga,
@@ -203,10 +205,10 @@ class Metricas:
             'localizacao': localizacao,
             'timestamp': datetime.now()
         })
-    
+
     def registar_veiculo_sem_autonomia(self, veiculo_id: int):
         """Regista um veículo que ficou sem autonomia.
-        
+
         Args:
             veiculo_id: ID do veículo sem autonomia
         """
@@ -267,19 +269,19 @@ class Metricas:
         if self.eventos_recalculo == 0:
             return 0.0
         return self.viagens_afetadas_total / self.eventos_recalculo
-    
+
     def tempo_medio_recarga(self) -> float:
         """Calcula o tempo médio de recarga por veículo."""
         if self.recargas_totais == 0:
             return 0.0
         return self.tempo_recarga_total / self.recargas_totais
-    
+
     def recargas_por_pedido(self) -> float:
         """Calcula a taxa de recargas por pedido atendido."""
         if self.pedidos_atendidos == 0:
             return 0.0
         return self.recargas_totais / self.pedidos_atendidos
-    
+
     def percentual_tempo_em_recarga(self) -> float:
         """Calcula o percentual de tempo gasto em recarga."""
         tempo_total = self.tempo_ocupacao_total + self.tempo_disponivel_total + self.tempo_recarga_total
@@ -290,7 +292,7 @@ class Metricas:
     # -------------------- Relatórios e Exportação --------------------
 
     # NOTA: Aqui se calhar depois fazer de outra maneira para juntar com o display
-    #TODO: juntar com o logger de alguma forma?
+    # TODO: juntar com o logger de alguma forma?
 
     def gerar_relatorio(self) -> str:
         """Gera um relatório textual com todas as métricas."""
