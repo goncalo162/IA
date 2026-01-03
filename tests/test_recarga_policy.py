@@ -84,8 +84,8 @@ def test_durante_viagem_policy_allows_with_viagem_ativa():
     grafo = make_simple_grafo()
     ve = make_low_fuel_vehicle()
 
-    # Viagem com pouca distância restante (5 km)
-    viagem = make_viagem(grafo, distancia_total=10.0, distancia_percorrida=5.0)
+    # Viagem com distância restante de 15 km (autonomia atual é 10 km, não suficiente com margem)
+    viagem = make_viagem(grafo, distancia_total=20.0, distancia_percorrida=5.0)
     ve.viagens.append(viagem)
 
     policy = RecargaDuranteViagemPolicy()

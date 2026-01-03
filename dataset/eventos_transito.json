@@ -56,6 +56,174 @@
       "nivel": "ELEVADO",
       "duracao_minutos": 60,
       "descricao": "Trânsito aumentado junto ao Hospital"
+    },
+    {
+      "minuto_simulacao": 240,
+      "aresta": "Rua Dom Paio Mendes",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 35,
+      "descricao": "Hora de almoço - centro congestionado"
+    },
+    {
+      "minuto_simulacao": 300,
+      "aresta": "EN205",
+      "nivel": "ACIDENTE",
+      "duracao_minutos": 50,
+      "descricao": "Acidente na EN205 - desvios necessários"
+    },
+    {
+      "minuto_simulacao": 360,
+      "aresta": "Av. Central",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 40,
+      "descricao": "Trânsito aumentado na zona comercial"
+    },
+    {
+      "minuto_simulacao": 420,
+      "aresta": "Rua de São Marcos",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Saída de escolas - muito movimento"
+    },
+    {
+      "minuto_simulacao": 480,
+      "aresta": "IC14",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 45,
+      "descricao": "Fluxo intenso no IC14 - início hora de ponta"
+    },
+    {
+      "minuto_simulacao": 540,
+      "aresta": "Av. da Liberdade",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 60,
+      "descricao": "Hora de ponta vespertina - muito tráfego"
+    },
+    {
+      "minuto_simulacao": 600,
+      "aresta": "Rua do Raio",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 25,
+      "descricao": "Trânsito aumentado - horário de saída"
+    },
+    {
+      "minuto_simulacao": 720,
+      "aresta": "Largo do Paço",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Evento cultural - zona histórica congestionada"
+    },
+    {
+      "minuto_simulacao": 1440,
+      "aresta": "Av. João XXI",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 35,
+      "descricao": "Dia 2 - Trânsito matinal"
+    },
+    {
+      "minuto_simulacao": 1500,
+      "aresta": "EN103",
+      "nivel": "ACIDENTE",
+      "duracao_minutos": 40,
+      "descricao": "Dia 2 - Acidente na EN103"
+    },
+    {
+      "minuto_simulacao": 1680,
+      "aresta": "Rua de São Victor",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 50,
+      "descricao": "Dia 2 - Obras na via - lentidão"
+    },
+    {
+      "minuto_simulacao": 1920,
+      "aresta": "Av. Central",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Dia 2 - Hora de ponta vespertina"
+    },
+    {
+      "minuto_simulacao": 2880,
+      "aresta": "IC14",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 45,
+      "descricao": "Dia 3 - Congestionamento matinal IC14"
+    },
+    {
+      "minuto_simulacao": 3000,
+      "aresta": "Rua do Souto",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 40,
+      "descricao": "Dia 3 - Mercado semanal - tráfego intenso"
+    },
+    {
+      "minuto_simulacao": 3240,
+      "aresta": "Av. da Liberdade",
+      "nivel": "ACIDENTE",
+      "duracao_minutos": 60,
+      "descricao": "Dia 3 - Acidente grave - via bloqueada"
+    },
+    {
+      "minuto_simulacao": 3600,
+      "aresta": "EN205",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 35,
+      "descricao": "Dia 3 - Obras prolongadas"
+    },
+    {
+      "minuto_simulacao": 4320,
+      "aresta": "Av. João XXI",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 30,
+      "descricao": "Dia 4 - Trânsito matinal aumentado"
+    },
+    {
+      "minuto_simulacao": 4500,
+      "aresta": "Rua Dom Paio Mendes",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 40,
+      "descricao": "Dia 4 - Evento especial no centro"
+    },
+    {
+      "minuto_simulacao": 4800,
+      "aresta": "IC14",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 50,
+      "descricao": "Dia 4 - Fluxo intenso saída cidade"
+    },
+    {
+      "minuto_simulacao": 5040,
+      "aresta": "Av. Hospital",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 35,
+      "descricao": "Dia 4 - Hora de ponta vespertina"
+    },
+    {
+      "minuto_simulacao": 5760,
+      "aresta": "EN101",
+      "nivel": "ACIDENTE",
+      "duracao_minutos": 55,
+      "descricao": "Dia 5 - Acidente matinal na EN101"
+    },
+    {
+      "minuto_simulacao": 6000,
+      "aresta": "Rua da Sé",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 45,
+      "descricao": "Dia 5 - Turismo - centro histórico lotado"
+    },
+    {
+      "minuto_simulacao": 6240,
+      "aresta": "Av. Central",
+      "nivel": "ELEVADO",
+      "duracao_minutos": 40,
+      "descricao": "Dia 5 - Compras de fim de semana"
+    },
+    {
+      "minuto_simulacao": 6600,
+      "aresta": "Av. da Liberdade",
+      "nivel": "MUITO_ELEVADO",
+      "duracao_minutos": 50,
+      "descricao": "Dia 5 - Última hora de ponta da semana"
     }
   ]
 }
