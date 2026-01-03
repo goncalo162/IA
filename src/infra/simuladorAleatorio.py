@@ -4,7 +4,7 @@ from infra.gestaoAmbiente import GestaoAmbiente
 from infra.entidades.pedidos import Pedido
 
 
-class SimuladorDinamico:
+class SimuladorAleatorio:
 
     def __init__(self, chanceTrocaTempo=0.05, chancePedidoAleatorio=0.05):
         """
@@ -28,7 +28,7 @@ class SimuladorDinamico:
             prioridade=0
         )
 
-    def simulacaoDinamica(self, ambiente, curTime):
+    def simulacaoAleatoria(self, ambiente, curTime):
         chuvaMudou = False
         novo_pedido = None
 

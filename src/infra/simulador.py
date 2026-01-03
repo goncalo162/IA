@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import os
 import time
 from dotenv import load_dotenv
-from infra.simuladorDinamico import SimuladorDinamico
+from infra.simuladorAleatorio import SimuladorAleatorio
 from infra.logger import SimuladorLogger
 
 # Carregar variáveis de ambiente
@@ -71,7 +71,7 @@ class Simulador:
         # Carregar configurações do simulador dinâmico do .env
         chance_troca_tempo = float(os.getenv('CHANCE_TROCA_TEMPO', 0.4))
         chance_pedido_aleatorio = float(os.getenv('CHANCE_PEDIDO_ALEATORIO', 0.3))
-        self.simuladorDinamico = SimuladorDinamico(chance_troca_tempo, chance_pedido_aleatorio)
+        self.simuladorAleatorio = SimuladorAleatorio(chance_troca_tempo, chance_pedido_aleatorio)
 
         self.tempo_simulacao = tempo_inicial or datetime.now()
         self.velocidade_simulacao = velocidade_simulacao
@@ -195,7 +195,7 @@ class Simulador:
         while self.tempo_simulacao < tempo_final and self.em_execucao:
             # 1. Processar eventos agendados e adicionar eventos novos aleatórios se
             # chances permitirem
-            chuveu, novo_pedido = self.simuladorDinamico.simulacaoDinamica(
+            chuveu, novo_pedido = self.simuladorAleatorio.simulacaoAleatoria(
                 self.ambiente, self.tempo_simulacao)
             if (chuveu):
                 self._log("[DIN]Trocou de tempo")
