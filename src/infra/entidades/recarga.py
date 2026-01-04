@@ -29,7 +29,7 @@ class PlanoRecarga:
     # Custos e validações
     custo_extra_estimado: float  # Custo adicional da recarga (viagem + tempo)
     autonomia_necessaria_km: float  # Autonomia mínima para chegar ao posto
-    margem_seguranca_km: float = 10.0  # Margem de segurança aplicada
+    margem_seguranca_km: float = 5.0  # Margem de segurança aplicada (padrão: 5 km)
 
     # Desvio (opcional, colocado depois de campos obrigatórios)
     desvio_rota_km: Optional[float] = None  # Quanto desvia da rota original

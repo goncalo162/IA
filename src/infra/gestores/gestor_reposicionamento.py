@@ -59,9 +59,6 @@ class GestorReposicionamento:
         # 1. Identificar veículos disponíveis para reposicionamento
         veiculos_disponiveis = self.ambiente.listar_veiculos_disponiveis()
 
-        # informar número de veículos disponíveis e política ativa
-        self.logger.log(f"Planear reposicionamentos: {len(veiculos_disponiveis)} veículos disponíveis; política={self.reposicionamento_policy.nome_politica()}")
-
         if not veiculos_disponiveis:
             return 0
 
@@ -73,12 +70,14 @@ class GestorReposicionamento:
             tempo_simulacao=tempo_simulacao
         )
 
-        #registar decisões da política
-        decisions = [(getattr(v, 'id_veiculo', None), d) for v, d in reposicionamentos]
-        self.logger.log(f"Decisões de reposicionamento: {decisions}")
-
+        # Só registar logs se houver reposicionamentos efetivos
         if not reposicionamentos:
             return 0
+
+        # Informar sobre reposicionamentos que vão acontecer
+        self.logger.log(f"Planear reposicionamentos: {len(veiculos_disponiveis)} veículos disponíveis; política={self.reposicionamento_policy.nome_politica()}")
+        decisions = [(getattr(v, 'id_veiculo', None), d) for v, d in reposicionamentos]
+        self.logger.log(f"Decisões de reposicionamento: {decisions}")
 
         # 3. Executar reposicionamentos
         count_reposicionados = 0

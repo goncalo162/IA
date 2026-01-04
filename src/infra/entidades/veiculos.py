@@ -75,12 +75,12 @@ class Veiculo(ABC):
     def autonomia_suficiente_para(
             self,
             distancia_km: float,
-            margem_seguranca: float = 10.0) -> bool:
+            margem_seguranca: float = 5.0) -> bool:
         """Verifica se o veículo tem autonomia suficiente para percorrer uma distância.
 
         Args:
             distancia_km: Distância a percorrer em km
-            margem_seguranca: Margem de segurança adicional em km
+            margem_seguranca: Margem de segurança adicional em km (padrão: 5 km)
 
         Returns:
             True se a autonomia atual é suficiente
@@ -570,7 +570,7 @@ class VeiculoEletrico(Veiculo):
             autonomia_atual,
             capacidade_passageiros,
             custo_operacional_km,
-            tempo_recarga_km: int,
+            tempo_recarga_km,
             numero_passageiros=0,
             localizacao_atual=0):
         super().__init__(

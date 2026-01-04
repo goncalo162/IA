@@ -88,7 +88,7 @@ class RecargaPolicy(ABC):
             navegador,
             ambiente,
             postos,
-            margem_seguranca: float = 10.0):
+            margem_seguranca: float = 5.0):
         """Fallback genérico: encontra posto mais próximo quando não há rota restante.
 
         Esta implementação é utilizada por políticas que precisam de um plano
@@ -279,7 +279,7 @@ class RecargaDuranteViagemPolicy(RecargaPolicy):
             return super()._encontrar_posto_mais_proximo(veiculo, grafo, navegador, ambiente, postos)
 
         planos = []
-        margem_seguranca = 10.0
+        margem_seguranca = 5.0
 
         # Apenas considerar postos que estão na rota planejada
         for posto_nome in postos:

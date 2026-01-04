@@ -230,7 +230,7 @@ class AlocadorPorCusto(AlocadorBase):
                 grafo=grafo, origem=origem_veiculo_nome, destino=origem_pedido_nome)
             if rota_ate_cliente is None:
                 continue
-
+            #nota: o navegador a calcular rota devia ter em conta a politica de ryde-sharing se aplicavel
             distancia_ate_cliente = grafo.calcular_distancia_rota(rota_ate_cliente)
             if distancia_ate_cliente is None:
                 continue

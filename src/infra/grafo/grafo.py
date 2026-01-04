@@ -105,7 +105,9 @@ class Grafo:
             return math.inf
         for (nodo, aresta) in self.m_graph[name1]:
             if nodo == name2:
-                return aresta.getTempoPercorrer()
+                tempo = aresta.getTempoPercorrer()
+                # Se a aresta está bloqueada por acidente, retorna infinito
+                return math.inf if tempo is None else tempo
         return math.inf
 
     ##############################
@@ -195,8 +197,8 @@ class Grafo:
     def calcular_tempo_rota(self, rota) -> float:
         """Calcula o tempo total (horas) para percorrer uma rota.
 
-        Usa o tempo de cada aresta (`getTempoPercorrer`). Lança um erro se
-        alguma aresta não tiver informação de tempo.
+        Usa o tempo de cada aresta (`getTempoPercorrer`). Se alguma aresta
+        estiver bloqueada por acidente (tempo = None), retorna infinito.
         """
         if rota is None or len(rota) < 2:
             return 0.0
@@ -207,9 +209,8 @@ class Grafo:
             if aresta:
                 tempo_segmento = aresta.getTempoPercorrer()
                 if tempo_segmento is None:
-                    raise ValueError(
-                        f"Aresta {rota[i]} -> {rota[i + 1]} não tem informação de tempo."
-                    )
+                    # Aresta bloqueada por acidente - rota impossível
+                    return float('inf')
                 tempo_total_horas += tempo_segmento
 
         return tempo_total_horas
