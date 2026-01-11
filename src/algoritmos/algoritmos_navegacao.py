@@ -139,6 +139,59 @@ class NavegadorCustoUniforme(NavegadorBase):
         return "Custo Uniforme"
 
 #############
+#   *greedy*
+#############
+
+class NavegadorGreedy(NavegadorBase):
+    """
+    Implementação do algoritmo Greedy Search.
+    Baseado apenas na heurística (h).
+    """
+    def nome_algoritmo(self) -> str:
+        return "Greedy"
+    
+    def calcular_rota(self, grafo: Grafo, origem: str, destino: str,
+                      veiculo: Optional[object] = None) -> Optional[List[str]]:
+        if origem == destino:
+            return [origem]
+
+        fronteira = []
+        
+        # h(origem)
+        heuristica_inicial = self.heuristica.estimativa(grafo, origem, destino)
+        
+        heapq.heappush(fronteira, (heuristica_inicial, origem, [origem], 0.0))
+
+        visitados = set()
+        
+        while fronteira:
+            heuristica_atual, no_atual, caminho, custoAcumulado_atual = heapq.heappop(fronteira)
+
+            if no_atual in visitados:
+                continue
+
+            visitados.add(no_atual)
+
+            if no_atual == destino:
+                return caminho
+
+            for (no_vizinho, aresta) in grafo.getNeighbours(no_atual):
+                if no_vizinho in visitados:
+                    continue
+
+                custo_aresta = self.funcao_custo.custo_aresta(aresta, veiculo)
+                custoAcumulado_novo = custoAcumulado_atual + custo_aresta
+
+                heuristica_nova = self.heuristica.estimativa(grafo, no_vizinho, destino)
+                
+                heapq.heappush(
+                    fronteira,
+                    (heuristica_nova, no_vizinho, caminho + [no_vizinho], custoAcumulado_novo)
+                )
+        
+        return None  # Sem caminho
+
+#############
 #   *a star*
 #############
 
@@ -209,8 +262,6 @@ class NavegadorAEstrela(NavegadorBase):
                 )
 
         return None  # Sem caminho
-
-# NOTA: REVER ESTE ALGORITMO
 
 
 class NavegadorBidirecional(NavegadorBase):

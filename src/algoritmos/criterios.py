@@ -2,10 +2,10 @@
 Facilita a importação a partir do módulo 'criterios'.
 """
 
-from .funcoes_custo import FuncaoCusto, CustoDefault, CustoTempoPercurso
+from .funcoes_custo import FuncaoCusto, CustoDefault, CustoTempoPercurso, CustoAmbientalTempo
 from .heuristicas import Heuristica, ZeroHeuristica, HeuristicaEuclidiana
 
 __all__ = [
-    'FuncaoCusto', 'CustoDefault', 'CustoTempoPercurso',
+    'FuncaoCusto', 'CustoDefault', 'CustoTempoPercurso', 'CustoAmbientalTempo'
     'Heuristica', 'ZeroHeuristica', 'HeuristicaEuclidiana'
 ]

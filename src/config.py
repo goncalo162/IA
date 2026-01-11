@@ -8,7 +8,7 @@ from algoritmos.algoritmos_navegacao import NavegadorBFS, NavegadorCustoUniforme
 from algoritmos.algoritmos_alocacao import AlocadorHeuristico, AlocadorSimples, AlocadorPorCusto, AlocadorAEstrela
 from infra.policies.reposicionamento_policy import ReposicionamentoAtratividade, ReposicionamentoEstatistico, ReposicionamentoNulo
 from infra.policies.ridesharing_policy import SimplesRideSharingPolicy, SemRideSharingPolicy
-from algoritmos.criterios import CustoDefault, CustoTempoPercurso
+from algoritmos.criterios import CustoDefault, CustoTempoPercurso, CustoAmbientalTempo
 from algoritmos.criterios import ZeroHeuristica, HeuristicaEuclidiana
 
 # Carregar variáveis de ambiente do ficheiro .env
@@ -65,6 +65,7 @@ class Config:
         opcoes = {
             'default': CustoDefault,
             'tempo': CustoTempoPercurso,
+            'ambiental': CustoAmbientalTempo
         }
 
         func_class = opcoes.get(nome)

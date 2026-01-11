@@ -1,5 +1,7 @@
 """Módulo com implementações de funções de custo (custos reais das arestas/rotas)."""
 import math
+from infra.entidades.veiculos import VeiculoCombustao
+
 from typing import List, Optional
 
 
@@ -67,5 +69,38 @@ class CustoTempoPercurso(FuncaoCusto):
             if tempo is None:  # Acidente na aresta
                 return float('inf')
             return float(tempo)
+        except Exception:
+            return 0.0
+
+
+class CustoAmbientalTempo(FuncaoCusto):
+    """Custo baseado no tempo de percurso, tendo em conta o trânsito e a preferencia ambiental do utilizador.
+
+    Usa `aresta.getTempoPercorrer()` que considera o nível de trânsito.
+    Arestas com acidente (retornam None) são penalizadas com custo infinito.
+    """
+
+    def custo_rota(self, grafo, percentagemAmbiental, rota: List[str], veiculo: Optional[object] = None) -> float:
+        tempo_total = 0.0
+        if not rota or len(rota) < 2:
+            return 0.0
+        for i in range(len(rota) - 1):
+            aresta = grafo.getEdge(rota[i], rota[i + 1])
+            if aresta:
+                custo = self.custo_aresta(aresta, veiculo, percentagemAmbiental)
+                if custo == float('inf'):
+                    return float('inf')  # Rota impossível devido a acidente
+                tempo_total += custo
+        return tempo_total
+
+    def custo_aresta(self, aresta, percentagemAmbiental, veiculo: Optional[object] = None) -> float:
+        try:
+            tempo = aresta.getTempoPercorrer()
+            emissoes = 0.0
+            if isinstance(veiculo, VeiculoCombustao):
+                emissoes = aresta.getQuilometro() * VeiculoCombustao.emissoes_por_km
+            if tempo is None:  # Acidente na aresta
+                return float('inf')
+            return float(tempo + (percentagemAmbiental+1) * emissoes)
         except Exception:
             return 0.0
