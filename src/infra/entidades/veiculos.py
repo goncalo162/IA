@@ -559,6 +559,10 @@ class VeiculoCombustao(Veiculo):
 
         return TipoNodo.BOMBA_GASOLINA
 
+    @property
+    def emissoes_por_km(self) -> float:
+        return 0.12; #Valor fixo com a percentagem de emissões de CO2, NOTA: pode
+
 
 # -------------------- Veículo Elétrico ---------------- #
 

@@ -238,7 +238,7 @@ class GestaoAmbiente:
         else:
             # NOTA: valor fictício de emissões por km para veículos a combustão pode
             # ser ajustado conforme necessário
-            return distancia * 0.12
+            return distancia * VeiculoCombustao.emissoes_por_km
 
     def getRandomNodePair(self):
         inicio = self.grafo.getRandomNodo()
